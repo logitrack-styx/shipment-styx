@@ -1,7 +1,12 @@
-spring.application.name=shipment-service
+spring:
+  application:
+    name: shipment-service
 
-spring.datasource.url=${DB_URL:jdbc:mysql://localhost:3306/logitrack}
-spring.datasource.username=${DB_USERNAME:root}
-spring.datasource.password=${DB_PASSWORD}
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/logitrack}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD}
 
-spring.jpa.hibernate.ddl-auto=validate
+  jpa:
+    hibernate:
+      ddl-auto: validate

@@ -1,0 +1,59 @@
+HELP.md
+
+# Maven
+target/
+build/
+
+# Maven Wrapper
+# Conservar esta exclusión solo si el wrapper del proyecto está
+# configurado para funcionar sin versionar el JAR.
+.mvn/wrapper/maven-wrapper.jar
+
+# Spring Tools Suite / Eclipse
+.apt_generated/
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# Visual Studio Code
+.vscode/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Variables de entorno y secretos locales
+.env
+.env.*
+!.env.example
+
+# Configuración local de Spring
+application-local.properties
+application-local.yml
+application-local.yaml
+
+# Archivos temporales
+*.tmp
+*.swp
+*~

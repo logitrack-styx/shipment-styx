@@ -1,26 +1,21 @@
 package com.logitrack.shipment.model;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @Embeddable
 public class Direccion {
-    @Column(name = "calle", nullable = false)
-    private String calle;
 
-    @Column(name = "numero", nullable = false)
-    private String numero;
-
-    @Column(name = "ciudad", nullable = false)
-    private String ciudad;
-
-    @Column(name = "codigo_postal", nullable = false)
-    private String codigoPostal;
-
+	private String calle;
+	private String numero;
+	private String ciudad;
+	private String codigoPostal;
+	
 }

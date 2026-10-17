@@ -15,6 +15,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.logitrack.shipment.audit.AuditableEntity;
 
 @Data
 @NoArgsConstructor
@@ -22,7 +23,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @Entity
 @Table(name = "Repartidores")
-public class Repartidor {
+public class Repartidor extends AuditableEntity {
 	
 	@Id
 	@GeneratedValue(strategy = GenerationType.UUID)

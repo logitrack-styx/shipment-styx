@@ -42,9 +42,15 @@ class AuditingIntegrationTest {
                 "3884123456"
         );
 
-        Cliente guardado = entityManager.persistFlushFind(cliente);
+        // 1. Persistir y sincronizar con la base
+        entityManager.persistAndFlush(cliente);
+        UUID id = cliente.getId();
 
-        UUID id = guardado.getId();
+        // 2. Limpiar el contexto para forzar lectura real desde la base
+        entityManager.clear();
+
+        // 3. Releer: las fechas ahora tienen la precisión que guarda la base
+        Cliente guardado = entityManager.find(Cliente.class, id);
         Instant fechaCreacion = guardado.getCreatedDate();
         Instant primeraModificacion = guardado.getLastModifiedDate();
 
@@ -53,7 +59,7 @@ class AuditingIntegrationTest {
         assertNotNull(primeraModificacion);
 
         // Evita que dos operaciones consecutivas queden en el mismo instante.
-        Thread.sleep(10);
+        Thread.sleep(20);
 
         guardado.setNombre("Juan Pérez Actualizado");
         entityManager.persistAndFlush(guardado);

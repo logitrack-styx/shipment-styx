@@ -2,10 +2,8 @@ package com.logitrack.shipment;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 @SpringBootApplication
-@EnableJpaAuditing
 public class ShipmentServiceApplication {
 
     /**
@@ -14,8 +12,6 @@ public class ShipmentServiceApplication {
      * @param args argumentos de línea de comandos
      */
     public static void main(String[] args) {
-
         SpringApplication.run(ShipmentServiceApplication.class, args);
     }
-
 }

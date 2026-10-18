@@ -7,7 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.test.context.ActiveProfiles;
 
 import com.logitrack.shipment.config.JpaAuditingConfig;
@@ -20,7 +20,7 @@ import com.logitrack.shipment.config.JpaAuditingConfig;
 @DataJpaTest
 @ActiveProfiles("test")
 @Import(JpaAuditingConfig.class)
-    class ClienteConstraintsIntegrationTest {
+    class ClienteConstraintsIntegrationTest{
 
     @Autowired
     private TestEntityManager entityManager;
@@ -33,8 +33,21 @@ import com.logitrack.shipment.config.JpaAuditingConfig;
         entityManager.persistAndFlush(primero);
 
         assertThrows(
-                DataIntegrityViolationException.class,
+                ConstraintViolationException.class,
                 () -> entityManager.persistAndFlush(segundo)
+        );
+    }
+
+    @Test
+    void debeRechazarEmailsQueSoloDifierenEnMayusculas() {
+        entityManager.persistAndFlush(
+                new Cliente("Juan Pérez", "mismo@example.com", "3884123456"));
+
+        Cliente duplicado = new Cliente("María López", "MISMO@Example.com", "3884999999");
+
+        assertThrows(
+                ConstraintViolationException.class,
+                () -> entityManager.persistAndFlush(duplicado)
         );
     }
 }

@@ -13,15 +13,16 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.test.context.ActiveProfiles;
 
 /**
  * Pruebas de integración para la auditoría automática de entidades.
  *
  * @author dominox45
  */
-@DataJpaTest(properties = {
-        "spring.jpa.hibernate.ddl-auto=create-drop"
-})
+@DataJpaTest
+@ActiveProfiles("test")
+
 class AuditingIntegrationTest {
 
     @Autowired

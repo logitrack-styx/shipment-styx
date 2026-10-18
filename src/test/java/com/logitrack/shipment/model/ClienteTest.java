@@ -60,9 +60,12 @@ class ClienteTest {
 
     @Test
     void debeAceptarLosLimitesExactosDeLongitud() {
+        // Local corta y dominio largo: @Email limita la parte local a 64 caracteres
+        // y cada etiqueta del dominio a 63.
+        String dominio = "b".repeat(63) + "." + "c".repeat(63) + "." + "d".repeat(63) + ".com";
         Cliente cliente = new Cliente(
                 "a".repeat(100),
-                "a".repeat(242) + "@test.com",   // 242 + 9 = 251, dentro de los 254
+                "a@" + dominio,
                 "1".repeat(25)
         );
 

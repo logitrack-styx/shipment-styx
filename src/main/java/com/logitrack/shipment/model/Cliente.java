@@ -1,6 +1,7 @@
 package com.logitrack.shipment.model;
 
 import java.util.UUID;
+import java.util.Locale;
 
 import com.logitrack.shipment.audit.AuditableEntity;
 
@@ -33,27 +34,34 @@ import lombok.Setter;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Cliente extends AuditableEntity {
 
-    /** Identificador único del cliente. Lo genera la base de datos/JPA; no tiene setter. */
+    /**
+     * Identificador único del cliente. Lo genera la base de datos/JPA; no tiene setter.
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    /** Nombre del cliente. */
+    /**
+     * Nombre del cliente.
+     */
     @Setter
     @NotBlank
     @Size(min = 2, max = 100)
     @Column(nullable = false, length = 100)
     private String nombre;
 
-    /** Correo electrónico del cliente. */
-    @Setter
+    /**
+     * Correo electrónico del cliente.
+     */
     @NotBlank
     @Email
     @Size(max = 254)
     @Column(nullable = false, unique = true, length = 254)
     private String email;
 
-    /** Número de teléfono del cliente. */
+    /**
+     * Número de teléfono del cliente.
+     */
     @Setter
     @NotBlank
     @Size(max = 25)
@@ -63,13 +71,26 @@ public class Cliente extends AuditableEntity {
     /**
      * Crea un cliente con sus datos principales.
      *
-     * @param nombre nombre del cliente
-     * @param email correo electrónico del cliente
+     * @param nombre   nombre del cliente
+     * @param email    correo electrónico del cliente
      * @param telefono número de teléfono del cliente
      */
     public Cliente(String nombre, String email, String telefono) {
         this.nombre = nombre;
-        this.email = email;
+        this.email = normalizarEmail(email);
         this.telefono = telefono;
+    }
+
+    /**
+     * Asigna el correo electrónico normalizado (sin espacios laterales y en minúsculas).
+     *
+     * @param email correo electrónico del cliente
+     */
+    public void setEmail(String email) {
+        this.email = normalizarEmail(email);
+    }
+
+    private static String normalizarEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase(Locale.ROOT);
     }
 }

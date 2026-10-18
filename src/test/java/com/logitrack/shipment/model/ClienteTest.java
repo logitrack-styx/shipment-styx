@@ -10,60 +10,139 @@ import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Pruebas unitarias para la entidad Cliente.
+ * Pruebas unitarias para las validaciones de la entidad Cliente.
  *
  * @author dominox45
  */
 class ClienteTest {
 
-    /**
-     * Comprueba que un cliente con datos válidos no genere errores
-     * de validación.
-     */
-    @Test
-    void debeAceptarUnClienteValido() {
-        try (ValidatorFactory factory =
-                     Validation.buildDefaultValidatorFactory()) {
+    private static final String NOMBRE_VALIDO = "Juan Pérez";
+    private static final String EMAIL_VALIDO = "juan@example.com";
+    private static final String TELEFONO_VALIDO = "3884123456";
 
-            Validator validator = factory.getValidator();
+    private static ValidatorFactory factory;
+    private static Validator validator;
 
-            Cliente cliente = new Cliente(
-                    "Juan Pérez",
-                    "juan@example.com",
-                    "3884123456"
-            );
-
-            Set<ConstraintViolation<Cliente>> errores =
-                    validator.validate(cliente);
-
-            assertTrue(errores.isEmpty());
-        }
+    @BeforeAll
+    static void iniciarValidador() {
+        factory = Validation.buildDefaultValidatorFactory();
+        validator = factory.getValidator();
     }
 
-    /**
-     * Comprueba que un correo electrónico inválido genere errores
-     * de validación.
-     */
+    @AfterAll
+    static void cerrarValidador() {
+        factory.close();
+    }
+
+    /** Comprueba que el campo indicado tenga errores de validación. */
+    private static boolean tieneErrorEn(Cliente cliente, String campo) {
+        Set<ConstraintViolation<Cliente>> errores = validator.validate(cliente);
+        return errores.stream()
+                .anyMatch(e -> e.getPropertyPath().toString().equals(campo));
+    }
+
+    // ---------- Cliente válido ----------
+
+    @Test
+    void debeAceptarUnClienteValido() {
+        Cliente cliente = new Cliente(NOMBRE_VALIDO, EMAIL_VALIDO, TELEFONO_VALIDO);
+
+        assertTrue(validator.validate(cliente).isEmpty());
+    }
+
+    @Test
+    void debeAceptarLosLimitesExactosDeLongitud() {
+        Cliente cliente = new Cliente(
+                "a".repeat(100),
+                "a".repeat(242) + "@test.com",   // 242 + 9 = 251, dentro de los 254
+                "1".repeat(25)
+        );
+
+        assertTrue(validator.validate(cliente).isEmpty());
+    }
+
+    // ---------- Nombre ----------
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"", "   "})
+    void debeRechazarNombreNuloOEnBlanco(String nombre) {
+        Cliente cliente = new Cliente(nombre, EMAIL_VALIDO, TELEFONO_VALIDO);
+
+        assertTrue(tieneErrorEn(cliente, "nombre"));
+    }
+
+    @Test
+    void debeRechazarNombreDeUnCaracter() {
+        Cliente cliente = new Cliente("A", EMAIL_VALIDO, TELEFONO_VALIDO);
+
+        assertTrue(tieneErrorEn(cliente, "nombre"));
+    }
+
+    @Test
+    void debeRechazarNombreDeMasDe100Caracteres() {
+        Cliente cliente = new Cliente("a".repeat(101), EMAIL_VALIDO, TELEFONO_VALIDO);
+
+        assertTrue(tieneErrorEn(cliente, "nombre"));
+    }
+
+    // ---------- Teléfono ----------
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"", "   "})
+    void debeRechazarTelefonoNuloOVacio(String telefono) {
+        Cliente cliente = new Cliente(NOMBRE_VALIDO, EMAIL_VALIDO, telefono);
+
+        assertTrue(tieneErrorEn(cliente, "telefono"));
+    }
+
+    @Test
+    void debeRechazarTelefonoDeMasDe25Caracteres() {
+        Cliente cliente = new Cliente(NOMBRE_VALIDO, EMAIL_VALIDO, "1".repeat(26));
+
+        assertTrue(tieneErrorEn(cliente, "telefono"));
+    }
+
+    // ---------- Email ----------
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"", "   "})
+    void debeRechazarEmailNuloOVacio(String email) {
+        Cliente cliente = new Cliente(NOMBRE_VALIDO, email, TELEFONO_VALIDO);
+
+        assertTrue(tieneErrorEn(cliente, "email"));
+    }
+
+    @Test
+    void debeRechazarEmailDeMasDe254Caracteres() {
+        // Formato válido pero demasiado largo: 250 + "@a.com" = 256
+        String emailLargo = "a".repeat(250) + "@a.com";
+        Cliente cliente = new Cliente(NOMBRE_VALIDO, emailLargo, TELEFONO_VALIDO);
+
+        assertTrue(tieneErrorEn(cliente, "email"));
+    }
+
     @Test
     void debeRechazarUnEmailInvalido() {
-        try (ValidatorFactory factory =
-                     Validation.buildDefaultValidatorFactory()) {
+        Cliente cliente = new Cliente(NOMBRE_VALIDO, "correo-invalido", TELEFONO_VALIDO);
 
-            Validator validator = factory.getValidator();
+        assertTrue(tieneErrorEn(cliente, "email"));
+    }
 
-            Cliente cliente = new Cliente(
-                    "Juan Pérez",
-                    "correo-invalido",
-                    "3884123456"
-            );
+    @Test
+    void noDebeMarcarErrorEnEmailValido() {
+        Cliente cliente = new Cliente(NOMBRE_VALIDO, EMAIL_VALIDO, "");
 
-            Set<ConstraintViolation<Cliente>> errores =
-                    validator.validate(cliente);
-
-            assertFalse(errores.isEmpty());
-        }
+        assertFalse(tieneErrorEn(cliente, "email"));
     }
 }

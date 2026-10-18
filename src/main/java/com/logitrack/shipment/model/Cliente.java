@@ -1,4 +1,3 @@
-
 package com.logitrack.shipment.model;
 
 import java.util.UUID;
@@ -15,6 +14,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -30,22 +30,23 @@ import lombok.Setter;
 @Entity
 @Table(name = "clientes")
 @Getter
-@Setter
-@NoArgsConstructor(access = lombok.AccessLevel.PROTECTED)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Cliente extends AuditableEntity {
 
-    /** Identificador único del cliente. */
+    /** Identificador único del cliente. Lo genera la base de datos/JPA; no tiene setter. */
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     /** Nombre del cliente. */
+    @Setter
     @NotBlank
     @Size(min = 2, max = 100)
     @Column(nullable = false, length = 100)
     private String nombre;
 
     /** Correo electrónico del cliente. */
+    @Setter
     @NotBlank
     @Email
     @Size(max = 254)
@@ -53,6 +54,7 @@ public class Cliente extends AuditableEntity {
     private String email;
 
     /** Número de teléfono del cliente. */
+    @Setter
     @NotBlank
     @Size(max = 25)
     @Column(nullable = false, length = 25)

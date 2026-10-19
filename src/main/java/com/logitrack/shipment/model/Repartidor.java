@@ -22,7 +22,7 @@ import com.logitrack.shipment.audit.AuditableEntity;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "Repartidores")
+@Table(name = "repartidores")
 public class Repartidor extends AuditableEntity {
 	
 	@Id

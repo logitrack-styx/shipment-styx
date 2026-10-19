@@ -47,7 +47,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Transición de Estado invalida (406 Not acceptable)
+     * Transición de Estado invalida (409 Conflict)
      */
     @ExceptionHandler(TransicionEstadoInvalidaException.class)
     public ResponseEntity<ErrorResponse> handleTransicionEstadoInvalido(
@@ -59,7 +59,7 @@ public class GlobalExceptionHandler {
                 ex.getMessage(),
                 LocalDateTime.now()
         );
-        return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).body(respuesta);
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(respuesta);
     }
 
 

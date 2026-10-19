@@ -6,6 +6,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.*;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -88,13 +90,21 @@ public class Envio extends AuditableEntity {
     @JoinColumn(name = "cliente_id", nullable = false)
     private Cliente cliente;
 
-
     /** Relación envios n-1 repartidor
      */
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name = "repartidor_id", nullable = true)
     private Repartidor repartidor;
 
+    /** Relación envios 1-n historial de estados
+     */
+    @OneToMany(mappedBy = "envio",
+            cascade = {
+            CascadeType.MERGE, CascadeType.PERSIST},
+            orphanRemoval = false
+    )
+    @Builder.Default
+    private List<HistorialEstado> historial = new ArrayList<>();
 
     /** Métodos propios de los envíos
      */

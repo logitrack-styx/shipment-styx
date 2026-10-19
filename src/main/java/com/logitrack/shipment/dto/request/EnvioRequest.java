@@ -1,49 +1,30 @@
 package com.logitrack.shipment.dto.request;
 
-import com.logitrack.shipment.model.Cliente;
-import com.logitrack.shipment.model.Direccion;
+import java.util.UUID;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
-import lombok.*;
-
-@Builder
-@AllArgsConstructor
-@NoArgsConstructor
-@Getter
-@Setter
 
 /**
- * Datos que se piden a la hora de crear o modificar un envío
- * @author TheMiggaCool
+ * Datos necesarios para registrar un envío. Referencia a un cliente ya
+ * existente mediante su id; no permite crear clientes implícitamente.
+ *
+ * @param clienteId id del cliente que solicita el envío
+ * @param origen    dirección de origen
+ * @param destino   dirección de destino
+ * @param peso      peso del paquete
+ * @param ancho     ancho del paquete
+ * @param alto      alto del paquete
+ * @param largo     largo del paquete
+ * @author dominox45
  */
-public class EnvioRequest {
-
-
-    @NotNull
-    @Positive
-    private Float peso;
-
-    @NotNull
-    @Positive
-    private Float ancho;
-
-    @NotNull
-    @Positive
-    private Float alto;
-
-    @NotNull
-    @Positive
-    private Float largo;
-
-    @NotNull
-    @Valid
-    private Direccion origen;
-
-    @NotNull
-    @Valid
-    private Direccion destino;
-
-    @NotNull
-    private ClienteRequest cliente;
+public record EnvioRequest(
+        @NotNull UUID clienteId,
+        @NotNull @Valid DireccionDto origen,
+        @NotNull @Valid DireccionDto destino,
+        @NotNull @Positive Double peso,
+        @NotNull @Positive Double ancho,
+        @NotNull @Positive Double alto,
+        @NotNull @Positive Double largo) {
 }

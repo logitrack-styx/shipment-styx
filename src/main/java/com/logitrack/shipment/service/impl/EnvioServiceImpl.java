@@ -1,107 +1,123 @@
 package com.logitrack.shipment.service.impl;
 
-import com.logitrack.shipment.repository.EnvioRepository;
-import com.logitrack.shipment.service.interfaces.EnvioService;
-import com.logitrack.shipment.dto.request.EnvioRequest;
-import com.logitrack.shipment.dto.request.RepartidorRequest;
-import com.logitrack.shipment.dto.response.EnvioResponse;
-import com.logitrack.shipment.model.Cliente;
-import com.logitrack.shipment.model.Envio;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.util.List;
+import java.util.UUID;
+
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-@Service
-@RequiredArgsConstructor
+
+import com.logitrack.shipment.dto.request.EnvioRequest;
+import com.logitrack.shipment.dto.response.EnvioResponse;
+import com.logitrack.shipment.enums.EstadoEnvio;
+import com.logitrack.shipment.event.EnvioEstadoCambiadoEvent;
+import com.logitrack.shipment.exceptions.RecursoNoEncontradoException;
+import com.logitrack.shipment.model.Cliente;
+import com.logitrack.shipment.model.Envio;
+import com.logitrack.shipment.repository.ClienteRepository;
+import com.logitrack.shipment.repository.EnvioRepository;
+import com.logitrack.shipment.service.interfaces.EnvioService;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+/**
+ * Implementación de los casos de uso de envíos.
+ *
+ * <p>Orquesta la búsqueda, la persistencia y la publicación de eventos; las
+ * reglas de transición viven en {@link Envio}. Los eventos se publican dentro
+ * de la transacción para que el historial se guarde o se revierta junto con
+ * la operación.</p>
+ *
+ * @author dominox45
+ */
 @Slf4j
+@Service
+@Transactional
+@RequiredArgsConstructor
 public class EnvioServiceImpl implements EnvioService {
 
     private final EnvioRepository envioRepository;
+    private final ClienteRepository clienteRepository;
     private final ApplicationEventPublisher eventPublisher;
 
-    /**
-     * Crea y guarda un envío.
-     * <p>DEBE VERIFICARSE QUE EL CLIENTE EXISTA A LA HORA DE REALIZAR UN PEDIDO.
-     * En caso de no existir, es creado.</p>
-     * El envío creado debe ser asignado al cliente que lo solicitó.
-     * <p>FALTA IMPLEMENTAR/ARREGLAR</p>
-     *
-     * @param request
-     * @return envioResponse
-     */
-
+    /** {@inheritDoc} */
     @Override
-    @Transactional
-    public EnvioResponse crearEnvio(EnvioRequest request){
-        log.info("Iniciando proceso de creación de envío");
+    public EnvioResponse registrar(EnvioRequest request) {
+        Cliente cliente = clienteRepository.findById(request.clienteId())
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "Cliente no encontrado: " + request.clienteId()));
 
-        // Tomamos los datos del cliente y generamos un nuevo registro
-        Cliente cliente = new Cliente (request.getCliente().getNombre(), request.getCliente().getEmail(), request.getCliente().getTelefono());
+        Envio envio = envioRepository.save(new Envio(cliente,
+                request.origen().aEntidad(), request.destino().aEntidad(),
+                request.peso(), request.ancho(), request.alto(), request.largo()));
 
-        Envio envio = Envio.builder()
-                .peso(request.getPeso())
-                .ancho(request.getAncho())
-                .alto(request.getAlto())
-                .largo(request.getLargo())
-                .origen(request.getOrigen())
-                .destino(request.getDestino())
-                .cliente(cliente)
-                .build();
+        eventPublisher.publishEvent(new EnvioEstadoCambiadoEvent(envio, null, envio.getEstado()));
+        log.info("Envío registrado con código de seguimiento {}", envio.getCodigoSeguimiento());
+        return EnvioResponse.from(envio);
+    }
 
-        Envio envioGuardado = envioRepository.save(envio);
-        log.info("Envio registrado exitosamente con codigo de seguimiento: {}", envio.getCodigoSeguimiento());
+    /** {@inheritDoc} */
+    @Override
+    @Transactional(readOnly = true)
+    public EnvioResponse obtenerPorId(UUID id) {
+        return EnvioResponse.from(buscarPorId(id));
+    }
 
-        return toResponse(envioGuardado);
+    /** {@inheritDoc} */
+    @Override
+    @Transactional(readOnly = true)
+    public EnvioResponse obtenerPorCodigoSeguimiento(UUID codigoSeguimiento) {
+        return EnvioResponse.from(envioRepository.findByCodigoSeguimiento(codigoSeguimiento)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "Envío no encontrado con código de seguimiento: " + codigoSeguimiento)));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    @Transactional(readOnly = true)
+    public List<EnvioResponse> listar(EstadoEnvio estado) {
+        List<Envio> envios = (estado == null)
+                ? envioRepository.findAll()
+                : envioRepository.findByEstado(estado);
+        return envios.stream().map(EnvioResponse::from).toList();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public EnvioResponse cambiarEstado(UUID id, EstadoEnvio nuevoEstado) {
+        Envio envio = buscarPorId(id);
+        EstadoEnvio anterior = envio.getEstado();
+
+        // El dominio valida; si lanza excepción, no se publica ningún evento.
+        envio.cambiarEstado(nuevoEstado);
+        envioRepository.save(envio);
+
+        eventPublisher.publishEvent(new EnvioEstadoCambiadoEvent(envio, anterior, nuevoEstado));
+        return EnvioResponse.from(envio);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void cancelarEnvio(UUID id) {
+        Envio envio = buscarPorId(id);
+        EstadoEnvio anterior = envio.getEstado();
+
+        envio.cancelar();
+        envioRepository.save(envio);
+
+        eventPublisher.publishEvent(
+                new EnvioEstadoCambiadoEvent(envio, anterior, EstadoEnvio.CANCELADO));
     }
 
     /**
-     * Actualiza el estado de un envío.
-     * FALTA IMPLEMENTAR
+     * Busca un envío por id o lanza la excepción de recurso inexistente.
      *
-      * @param envio
-     * @return envioResponse
+     * @param id identificador del envío
+     * @return el envío encontrado
      */
-    @Override
-    @Transactional
-    public EnvioResponse actualizarEstado(EnvioRequest envio) {
-        return null;
-    }
-
-    /**
-     * Cancela un envío en estado PENDIENTE.
-     * <p>FALTA IMPLEMENTAR</p>
-     *
-     * @param envio
-     * @return envioResponse
-     */
-    @Override
-    public EnvioResponse cancelarEnvio(EnvioRequest envio) {
-        return null;
-    }
-
-    /**
-     * Asigna un repartidor ACTIVO a un envío en estado EN_RUTA.
-     * <p>FALTA IMPLEMENTAR</p>
-     *
-     * @param envio
-     * @param repartidor
-     * @return envioResponse
-     */
-    @Override
-    public EnvioResponse asignarRepartidor(EnvioRequest envio, RepartidorRequest repartidor) {
-        return null;
-    }
-
-    /**
-     * Convierte un Envio a un envioResponse
-     * <p>FALTA IMPLEMENTAR</p>
-     *
-     * @param envio
-     * @return envioResponse
-     */
-    public EnvioResponse toResponse(Envio envio){
-
-        return EnvioResponse.builder().build();
+    private Envio buscarPorId(UUID id) {
+        return envioRepository.findById(id).orElseThrow(
+                () -> new RecursoNoEncontradoException("Envío no encontrado: " + id));
     }
 }

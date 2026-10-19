@@ -5,6 +5,7 @@ import com.logitrack.shipment.model.Repartidor;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -24,5 +25,7 @@ public interface RepartidorRepository extends JpaRepository<Repartidor, UUID> {
      * @param estado
      * @return {@link Optional} con datos del repartidor.
      */
-    Optional<Repartidor> findByEstadoRepartidor(EstadoRepartidor estado);
+    //Optional<Repartidor> findByEstadoRepartidor(EstadoRepartidor estado);
+	
+	public List<Repartidor> findByEstadoRepartidor(EstadoRepartidor estadoRepartidor);
 }

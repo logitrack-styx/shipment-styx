@@ -25,4 +25,6 @@ public interface ClienteRepository extends JpaRepository<Cliente, UUID> {
      * @return {@link Optional} con datos del cliente.
      */
     Optional<Cliente> findByIdCliente(UUID id);
+    
+    public boolean existsByEmail(String email);
 }

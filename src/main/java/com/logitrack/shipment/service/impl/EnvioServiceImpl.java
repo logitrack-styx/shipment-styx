@@ -1,9 +1,7 @@
-package com.logitrack.shipment.Service.Impl;
+package com.logitrack.shipment.service.impl;
 
-import com.logitrack.shipment.Repository.EnvioRepository;
-import com.logitrack.shipment.Repository.HistorialEstadoRepository;
-import com.logitrack.shipment.Repository.RepartidorRepository;
-import com.logitrack.shipment.Service.Interface.EnvioService;
+import com.logitrack.shipment.repository.EnvioRepository;
+import com.logitrack.shipment.service.interfaces.EnvioService;
 import com.logitrack.shipment.dto.request.EnvioRequest;
 import com.logitrack.shipment.dto.request.RepartidorRequest;
 import com.logitrack.shipment.dto.response.EnvioResponse;
@@ -21,6 +19,17 @@ public class EnvioServiceImpl implements EnvioService {
 
     private final EnvioRepository envioRepository;
     private final ApplicationEventPublisher eventPublisher;
+
+    /**
+     * Crea y guarda un envío.
+     * <p>DEBE VERIFICARSE QUE EL CLIENTE EXISTA A LA HORA DE REALIZAR UN PEDIDO.
+     * En caso de no existir, es creado.</p>
+     * El envío creado debe ser asignado al cliente que lo solicitó.
+     * <p>FALTA IMPLEMENTAR/ARREGLAR</p>
+     *
+     * @param request
+     * @return envioResponse
+     */
 
     @Override
     @Transactional
@@ -46,26 +55,53 @@ public class EnvioServiceImpl implements EnvioService {
         return toResponse(envioGuardado);
     }
 
+    /**
+     * Actualiza el estado de un envío.
+     * FALTA IMPLEMENTAR
+     *
+      * @param envio
+     * @return envioResponse
+     */
     @Override
     @Transactional
     public EnvioResponse actualizarEstado(EnvioRequest envio) {
         return null;
     }
 
+    /**
+     * Cancela un envío en estado PENDIENTE.
+     * <p>FALTA IMPLEMENTAR</p>
+     *
+     * @param envio
+     * @return envioResponse
+     */
     @Override
     public EnvioResponse cancelarEnvio(EnvioRequest envio) {
         return null;
     }
 
+    /**
+     * Asigna un repartidor ACTIVO a un envío en estado EN_RUTA.
+     * <p>FALTA IMPLEMENTAR</p>
+     *
+     * @param envio
+     * @param repartidor
+     * @return envioResponse
+     */
     @Override
     public EnvioResponse asignarRepartidor(EnvioRequest envio, RepartidorRequest repartidor) {
         return null;
     }
 
     /**
-     * Conviertimos un Envio a un envioResponse
+     * Convierte un Envio a un envioResponse
+     * <p>FALTA IMPLEMENTAR</p>
+     *
+     * @param envio
+     * @return envioResponse
      */
     public EnvioResponse toResponse(Envio envio){
+
         return EnvioResponse.builder().build();
     }
 }

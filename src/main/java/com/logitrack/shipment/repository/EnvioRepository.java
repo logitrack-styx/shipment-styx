@@ -5,6 +5,7 @@ import com.logitrack.shipment.model.Envio;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -26,7 +27,7 @@ public interface EnvioRepository extends JpaRepository<Envio, UUID> {
      * @param codigoSeguimiento
      * @return {@link Optional} con el envío.
      */
-    Optional<Envio> findByNumeroSeguimiento(UUID codigoSeguimiento);
+    Optional<Envio> findByCodigoSeguimiento(UUID codigoSeguimiento);
 
     /**
      * Buscar un envío por su estado
@@ -34,6 +35,6 @@ public interface EnvioRepository extends JpaRepository<Envio, UUID> {
      * @param estado
      * @return {@link Optional} con el envío.
      */
-    Optional<Envio> findByEstado(EstadoEnvio estado);
+    List<Envio> findByEstado(EstadoEnvio estado);
 
 }

@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import com.logitrack.shipment.dto.request.AsignacionRequest;
 import com.logitrack.shipment.dto.response.AsignacionResponse;
+import com.logitrack.shipment.enums.EstadoEnvio;
 import com.logitrack.shipment.enums.EstadoRepartidor;
 import com.logitrack.shipment.exception.RecursoNoEncontradoException;
 import com.logitrack.shipment.exception.TransicionEstadoInvalidaException;

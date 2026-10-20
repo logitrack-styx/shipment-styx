@@ -4,7 +4,6 @@ import java.util.UUID;
 
 import com.logitrack.shipment.dto.request.AsignacionRequest;
 import com.logitrack.shipment.dto.response.AsignacionResponse;
-import com.logitrack.shipment.enums.EstadoEnvio;
 import com.logitrack.shipment.enums.EstadoRepartidor;
 import com.logitrack.shipment.exception.RecursoNoEncontradoException;
 import com.logitrack.shipment.exception.TransicionEstadoInvalidaException;
@@ -28,8 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li>El envío debe existir → si no, 404 ({@link RecursoNoEncontradoException}).</li>
  *   <li>El repartidor debe existir → si no, 404.</li>
  *   <li>El repartidor debe estar ACTIVO → si no, 409 ({@link TransicionEstadoInvalidaException}).</li>
- *   <li>El envío debe estar PENDIENTE → si no, 409.</li>
- *   <li>El envío no debe tener ya un repartidor asignado → si lo tiene, 409
+ *   <li>Las reglas propias del envío (debe estar PENDIENTE y no tener ya un
+ *       repartidor) las protege el dominio en
+ *       {@link Envio#asignarRepartidor(Repartidor)} → si no se cumplen, 409
  *       (una segunda asignación nunca sobrescribe la primera silenciosamente).</li>
  * </ol>
  *
@@ -48,6 +48,15 @@ public class AsignacionServiceImpl implements AsignacionService {
     private final EnvioRepository envioRepository;
     private final RepartidorRepository repartidorRepository;
 
+    /**
+     * Asigna un repartidor activo a un envío pendiente sin cambiar su estado.
+     *
+     * @param envioId id del envío
+     * @param request datos de la asignación
+     * @return datos del envío y del repartidor asignado
+     * @throws RecursoNoEncontradoException      si el envío o el repartidor no existen
+     * @throws TransicionEstadoInvalidaException si el repartidor está inactivo o el envío no admite asignación
+     */
     @Override
     @Transactional
     public AsignacionResponse asignarRepartidor(UUID envioId, AsignacionRequest request) {
@@ -64,17 +73,7 @@ public class AsignacionServiceImpl implements AsignacionService {
                     "El repartidor " + repartidor.getId() + " no está ACTIVO");
         }
 
-        if (envio.getEstado() != EstadoEnvio.PENDIENTE) {
-            throw new TransicionEstadoInvalidaException(
-                    "Solo se puede asignar un repartidor a un envío en estado PENDIENTE");
-        }
-
-        if (envio.getRepartidor() != null) {
-            throw new TransicionEstadoInvalidaException(
-                    "El envío " + envio.getId() + " ya tiene un repartidor asignado");
-        }
-
-        envio.setRepartidor(repartidor);
+        envio.asignarRepartidor(repartidor);
         Envio envioActualizado = envioRepository.save(envio);
 
         log.info("Repartidor {} asignado al envío {}", repartidor.getId(), envioActualizado.getId());

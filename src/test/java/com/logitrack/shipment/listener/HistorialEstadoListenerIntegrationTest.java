@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import com.logitrack.shipment.enums.EstadoEnvio;
 import com.logitrack.shipment.event.EnvioEstadoCambiadoEvent;
 import com.logitrack.shipment.model.Cliente;
+import com.logitrack.shipment.model.Direccion;
 import com.logitrack.shipment.model.Envio;
 import com.logitrack.shipment.model.HistorialEstado;
 import com.logitrack.shipment.repository.ClienteRepository;
@@ -69,16 +70,19 @@ class HistorialEstadoListenerIntegrationTest {
         transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
+    /**
+     * Persiste un cliente con email único y un envío PENDIENTE asociado.
+     *
+     * @return el envío persistido
+     */
     private Envio nuevoEnvioPersistido() {
         Cliente cliente = clienteRepository.save(new Cliente(
                 "Juan Pérez",
                 "juan+" + UUID.randomUUID() + "@example.com",
                 "3884123456"));
 
-        Envio envio = Envio.builder()
-                .peso(1f).ancho(1f).alto(1f).largo(1f)
-                .cliente(cliente)
-                .build();
+        Direccion direccion = new Direccion("Calle", "123", "San Salvador de Jujuy", "4600");
+        Envio envio = new Envio(cliente, direccion, direccion, 1.0, 1.0, 1.0, 1.0);
 
         return envioRepository.save(envio);
     }

@@ -18,6 +18,8 @@ import com.logitrack.shipment.enums.EstadoEnvio;
 import com.logitrack.shipment.enums.EstadoRepartidor;
 import com.logitrack.shipment.exception.RecursoNoEncontradoException;
 import com.logitrack.shipment.exception.TransicionEstadoInvalidaException;
+import com.logitrack.shipment.model.Cliente;
+import com.logitrack.shipment.model.Direccion;
 import com.logitrack.shipment.model.Envio;
 import com.logitrack.shipment.model.Repartidor;
 import com.logitrack.shipment.repository.EnvioRepository;
@@ -32,6 +34,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Pruebas obligatorias de la Issue 04 (asignación de repartidores).
+ *
+ * <p>Los envíos se construyen con el constructor real de {@link Envio} y se
+ * llevan a cada estado mediante sus métodos de dominio, sin setters.</p>
  *
  * @author TheMiggaCool
  */
@@ -58,10 +63,9 @@ class AsignacionServiceImplTest {
         envioId = UUID.randomUUID();
         repartidorId = UUID.randomUUID();
 
-        envio = Envio.builder()
-                .estado(EstadoEnvio.PENDIENTE)
-                .peso(1f).ancho(1f).alto(1f).largo(1f)
-                .build();
+        Cliente cliente = new Cliente("Juan Pérez", "juan@example.com", "3884123456");
+        Direccion direccion = new Direccion("Calle", "123", "San Salvador de Jujuy", "4600");
+        envio = new Envio(cliente, direccion, direccion, 1.0, 1.0, 1.0, 1.0);
 
         repartidor = Repartidor.builder()
                 .id(repartidorId)
@@ -107,7 +111,8 @@ class AsignacionServiceImplTest {
 
     @Test
     void debeLanzar409SiElEnvioNoEstaPendiente() {
-        envio.setEstado(EstadoEnvio.EN_RUTA);
+        envio.asignarRepartidor(Repartidor.builder().id(UUID.randomUUID()).build());
+        envio.cambiarEstado(EstadoEnvio.EN_RUTA);
         when(envioRepository.findById(envioId)).thenReturn(Optional.of(envio));
         when(repartidorRepository.findById(repartidorId)).thenReturn(Optional.of(repartidor));
 
@@ -119,7 +124,7 @@ class AsignacionServiceImplTest {
 
     @Test
     void debeLanzar409SiElEnvioYaTieneUnRepartidorAsignado() {
-        envio.setRepartidor(Repartidor.builder().id(UUID.randomUUID()).build());
+        envio.asignarRepartidor(Repartidor.builder().id(UUID.randomUUID()).build());
         when(envioRepository.findById(envioId)).thenReturn(Optional.of(envio));
         when(repartidorRepository.findById(repartidorId)).thenReturn(Optional.of(repartidor));
 

@@ -11,7 +11,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 import com.logitrack.shipment.enums.EstadoEnvio;
 import com.logitrack.shipment.enums.EstadoRepartidor;
-import com.logitrack.shipment.exceptions.TransicionEstadoInvalidaException;
+import com.logitrack.shipment.exception.TransicionEstadoInvalidaException;
 
 /**
  * Pruebas unitarias de la máquina de estados y las reglas de dominio de {@link Envio}.

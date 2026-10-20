@@ -74,7 +74,7 @@ public class AsignacionServiceImpl implements AsignacionService {
                     "El envío " + envio.getId() + " ya tiene un repartidor asignado");
         }
 
-        envio.setRepartidor(repartidor);
+        envio.asignarRepartidor(repartidor);
         Envio envioActualizado = envioRepository.save(envio);
 
         log.info("Repartidor {} asignado al envío {}", repartidor.getId(), envioActualizado.getId());

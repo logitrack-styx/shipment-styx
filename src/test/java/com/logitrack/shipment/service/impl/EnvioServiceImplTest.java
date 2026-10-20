@@ -26,7 +26,7 @@ import com.logitrack.shipment.dto.request.EnvioRequest;
 import com.logitrack.shipment.dto.response.EnvioResponse;
 import com.logitrack.shipment.enums.EstadoEnvio;
 import com.logitrack.shipment.event.EnvioEstadoCambiadoEvent;
-import com.logitrack.shipment.exceptions.RecursoNoEncontradoException;
+import com.logitrack.shipment.exception.RecursoNoEncontradoException;
 import com.logitrack.shipment.model.Cliente;
 import com.logitrack.shipment.model.Envio;
 import com.logitrack.shipment.repository.ClienteRepository;

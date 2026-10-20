@@ -1,4 +1,4 @@
-package com.logitrack.shipment.exceptions;
+package com.logitrack.shipment.exception;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;

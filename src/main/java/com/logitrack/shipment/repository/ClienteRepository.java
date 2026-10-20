@@ -24,5 +24,5 @@ public interface ClienteRepository extends JpaRepository<Cliente, UUID> {
      * @param id
      * @return {@link Optional} con datos del cliente.
      */
-    Optional<Cliente> findByIdCliente(UUID id);
+    Optional<Cliente> findById(UUID id);
 }

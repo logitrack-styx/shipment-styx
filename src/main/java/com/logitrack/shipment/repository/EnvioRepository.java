@@ -33,4 +33,5 @@ public interface EnvioRepository extends JpaRepository<Envio, UUID> {
      * @return envíos en ese estado; lista vacía si no hay ninguno
      */
     List<Envio> findByEstado(EstadoEnvio estado);
+
 }

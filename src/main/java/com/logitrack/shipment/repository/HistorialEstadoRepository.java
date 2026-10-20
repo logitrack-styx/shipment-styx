@@ -26,5 +26,6 @@ public interface HistorialEstadoRepository extends JpaRepository<HistorialEstado
      * @param envioId id del envío
      * @return registros de historial del envío, del más antiguo al más reciente.
      */
+    //Optional<HistorialEstado> findByIdHistorialEstado(Long id);
     List<HistorialEstado> findByEnvioIdOrderByFechaHoraAsc(UUID envioId);
 }

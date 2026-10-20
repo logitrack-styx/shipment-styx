@@ -1,4 +1,4 @@
-package com.logitrack.shipment.exceptions;
+package com.logitrack.shipment.exception;
 
 public class RecursoNoEncontradoException extends RuntimeException{
     public RecursoNoEncontradoException(String message) {

@@ -1,4 +1,4 @@
-package com.logitrack.shipment.exceptions;
+package com.logitrack.shipment.exception;
 
 public class RecursoYaExistenteException extends RuntimeException {
     public RecursoYaExistenteException(String message) {

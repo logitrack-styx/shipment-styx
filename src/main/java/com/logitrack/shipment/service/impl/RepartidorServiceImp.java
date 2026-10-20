@@ -26,17 +26,34 @@ public class RepartidorServiceImp implements RepartidorService {
 
 	@Override
 	@Transactional
-	public RepartidorResponse createRepartidor(RepartidorRequest repartidorRequest) {
+	public RepartidorResponse create(RepartidorRequest repartidorRequest) {
 		Repartidor repartidor = mapToEntity(repartidorRequest);
 		Repartidor savedRepartidor = repartidorRepository.save(repartidor);
 		log.info("Se ha creado el Repartidor: " + savedRepartidor.getId());
 		
 		return mapToResponseDto(savedRepartidor);
 	}
+	
+	@Override
+	@Transactional(readOnly = true)
+	public List<RepartidorResponse> findAll(EstadoRepartidor estadoRepartidor) {
+		List<Repartidor> repartidores = null;
+		if (estadoRepartidor == null) {
+			repartidores = repartidorRepository.findAll();
+			log.info("Se han encontraron " + repartidores.size() + " Repartidores");
+		} else {
+			repartidores = repartidorRepository.findByEstadoRepartidor(estadoRepartidor);
+			log.info("Se han encontraron " + repartidores.size() + " Repartidores: " + estadoRepartidor);
+		}
+		return repartidores
+				.stream()
+				.map(this::mapToResponseDto)
+				.toList();
+	}
 
 	@Override
 	@Transactional(readOnly = true)
-	public RepartidorResponse findRepartidorById(UUID id) {
+	public RepartidorResponse findById(UUID id) {
 		Repartidor repartidor = repartidorRepository.findById(id)
 				.orElseThrow(() -> {
 					log.info("NO se ha encontro el Repartidor: " + id);
@@ -44,17 +61,6 @@ public class RepartidorServiceImp implements RepartidorService {
 				});
 		log.info("Se ha encontro el Repartidor: " + id);
 		return mapToResponseDto(repartidor);
-	}
-
-	@Override
-	@Transactional(readOnly = true)
-	public List<RepartidorResponse> findRepartidorByEstadoRepartidor(EstadoRepartidor estadoRepartidor) {
-		List<Repartidor> repartidores = repartidorRepository.findByEstadoRepartidor(estadoRepartidor);
-		log.info("Se han encontraron " + repartidores.size() + " Repartidores: " + estadoRepartidor);
-		return repartidores
-				.stream()
-				.map(this::mapToResponseDto)
-				.toList();
 	}
 	
 	private RepartidorResponse mapToResponseDto(Repartidor repartidor) {

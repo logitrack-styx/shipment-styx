@@ -23,5 +23,5 @@ public interface HistorialEstadoRepository extends JpaRepository<HistorialEstado
      * @param id
      * @return {@link Optional} con datos del historial.
      */
-    Optional<HistorialEstado> findByIdHistorialEstado(Long id);
+    //Optional<HistorialEstado> findByIdHistorialEstado(Long id);
 }

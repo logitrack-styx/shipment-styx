@@ -27,5 +27,5 @@ public interface RepartidorRepository extends JpaRepository<Repartidor, UUID> {
      */
     //Optional<Repartidor> findByEstadoRepartidor(EstadoRepartidor estado);
 	
-	public List<Repartidor> findByEstadoRepartidor(EstadoRepartidor estadoRepartidor);
+	public List<Repartidor> findByEstadoRepartidor(EstadoRepartidor estado);
 }

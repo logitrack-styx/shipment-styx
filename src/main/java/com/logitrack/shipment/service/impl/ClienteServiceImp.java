@@ -1,5 +1,6 @@
 package com.logitrack.shipment.service.impl;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -25,7 +26,7 @@ public class ClienteServiceImp implements ClienteService {
 	
 	@Override
 	@Transactional
-	public ClienteResponse createCliente(ClienteRequest clienteRequest) {
+	public ClienteResponse create(ClienteRequest clienteRequest) {
 		verifyUnique(clienteRequest);
 		
 		Cliente cliente = mapToEntity(clienteRequest);
@@ -34,10 +35,21 @@ public class ClienteServiceImp implements ClienteService {
 		
 		return mapToResponseDto(savedCliente);
 	}
+	
+	@Override
+	@Transactional(readOnly = true)
+	public List<ClienteResponse> findAll() {
+		List<Cliente> clientes = clienteRepository.findAll();
+		log.info("Se han encontraron " + clientes.size() + " Clientes");
+		return clientes
+				.stream()
+				.map(this::mapToResponseDto)
+				.toList();
+	}
 
 	@Override
 	@Transactional(readOnly = true)
-	public ClienteResponse findClienteById(UUID id) {
+	public ClienteResponse findById(UUID id) {
 		Cliente cliente = clienteRepository.findById(id)
 				.orElseThrow(() -> {
 					log.info("NO se ha encontro el Cliente: " + id);

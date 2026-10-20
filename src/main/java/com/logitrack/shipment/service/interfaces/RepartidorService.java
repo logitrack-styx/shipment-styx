@@ -9,10 +9,10 @@ import com.logitrack.shipment.enums.EstadoRepartidor;
 
 public interface RepartidorService {
 
-	public RepartidorResponse createRepartidor(RepartidorRequest repartidorRequest);
+	public RepartidorResponse create(RepartidorRequest repartidorRequest);
 	
-	public RepartidorResponse findRepartidorById(UUID id);
+	public RepartidorResponse findById(UUID id);
 	
-	public List<RepartidorResponse> findRepartidorByEstadoRepartidor(EstadoRepartidor estadoRepartidor);
+	public List<RepartidorResponse> findAll(EstadoRepartidor estadoRepartidor);
 	
 }

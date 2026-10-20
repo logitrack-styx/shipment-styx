@@ -6,7 +6,7 @@ import java.util.UUID;
 
 import com.logitrack.shipment.audit.AuditableEntity;
 import com.logitrack.shipment.enums.EstadoEnvio;
-import com.logitrack.shipment.exceptions.TransicionEstadoInvalidaException;
+import com.logitrack.shipment.exception.TransicionEstadoInvalidaException;
 
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.AttributeOverrides;

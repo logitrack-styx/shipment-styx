@@ -8,8 +8,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.logitrack.shipment.dto.request.ClienteRequest;
 import com.logitrack.shipment.dto.response.ClienteResponse;
-import com.logitrack.shipment.exceptions.RecursoNoEncontradoException;
-import com.logitrack.shipment.exceptions.RecursoYaExistenteException;
+import com.logitrack.shipment.exception.RecursoNoEncontradoException;
+import com.logitrack.shipment.exception.RecursoYaExistenteException;
 import com.logitrack.shipment.model.Cliente;
 import com.logitrack.shipment.repository.ClienteRepository;
 import com.logitrack.shipment.service.interfaces.ClienteService;

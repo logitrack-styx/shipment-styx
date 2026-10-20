@@ -21,7 +21,7 @@ import com.logitrack.shipment.model.Envio;
  * <p>El evento es un contrato de comunicación entre módulos: no contiene
  * lógica de negocio ni acceso a repositorios.</p>
  *
- * @author TheMiggaCool
+ * @author dominox45
  */
 public record EnvioEstadoCambiadoEvent(
         Envio envio,

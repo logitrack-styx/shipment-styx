@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.logitrack.shipment.dto.request.RepartidorRequest;
 import com.logitrack.shipment.dto.response.RepartidorResponse;
 import com.logitrack.shipment.enums.EstadoRepartidor;
-import com.logitrack.shipment.exceptions.RecursoNoEncontradoException;
+import com.logitrack.shipment.exception.RecursoNoEncontradoException;
 import com.logitrack.shipment.model.Repartidor;
 import com.logitrack.shipment.repository.RepartidorRepository;
 import com.logitrack.shipment.service.interfaces.RepartidorService;

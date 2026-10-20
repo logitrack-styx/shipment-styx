@@ -73,6 +73,16 @@ public class AsignacionServiceImpl implements AsignacionService {
                     "El repartidor " + repartidor.getId() + " no está ACTIVO");
         }
 
+        if (envio.getEstado() != EstadoEnvio.PENDIENTE) {
+            throw new TransicionEstadoInvalidaException(
+                    "Solo se puede asignar un repartidor a un envío en estado PENDIENTE");
+        }
+
+        if (envio.getRepartidor() != null) {
+            throw new TransicionEstadoInvalidaException(
+                    "El envío " + envio.getId() + " ya tiene un repartidor asignado");
+        }
+
         envio.asignarRepartidor(repartidor);
         Envio envioActualizado = envioRepository.save(envio);
 

@@ -70,6 +70,11 @@ class HistorialEstadoListenerIntegrationTest {
         transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
+    /**
+     * Persiste un cliente con email único y un envío PENDIENTE asociado.
+     *
+     * @return el envío persistido
+     */
     private Envio nuevoEnvioPersistido() {
         Cliente cliente = clienteRepository.save(new Cliente(
                 "Juan Pérez",

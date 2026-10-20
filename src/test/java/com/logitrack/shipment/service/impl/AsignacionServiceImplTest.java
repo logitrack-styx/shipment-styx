@@ -52,6 +52,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
  *   <li>Una asignación exitosa guarda el repartidor sin modificar el estado del envío.</li>
  * </ul>
  *
+ * <p>Los envíos se construyen con el constructor real de {@link Envio} y se
+ * llevan a cada estado mediante sus métodos de dominio, sin setters.</p>
+ *
  * @author TheMiggaCool
  * @see AsignacionServiceImpl
  */

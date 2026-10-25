@@ -24,8 +24,6 @@ import lombok.Setter;
  * </p>
  *
  * @author NikoRKM
- * @version 1.0
- * @see ClienteService
  */
 @Builder
 @Getter
@@ -33,7 +31,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Schema(description = "Objeto de respuesta con la información de un cliente")
-public class ClienteResponse {
+public class ClienteResponse{
 	
 	/**
      * Identificador único del cliente.

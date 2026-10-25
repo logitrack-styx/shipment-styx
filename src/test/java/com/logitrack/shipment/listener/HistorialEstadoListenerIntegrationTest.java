@@ -11,11 +11,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import com.logitrack.shipment.enums.EstadoEnvio;
 import com.logitrack.shipment.event.EnvioEstadoCambiadoEvent;
-import com.logitrack.shipment.model.Cliente;
 import com.logitrack.shipment.model.Direccion;
 import com.logitrack.shipment.model.Envio;
 import com.logitrack.shipment.model.HistorialEstado;
-import com.logitrack.shipment.repository.ClienteRepository;
 import com.logitrack.shipment.repository.EnvioRepository;
 import com.logitrack.shipment.repository.HistorialEstadoRepository;
 
@@ -46,9 +44,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 class HistorialEstadoListenerIntegrationTest {
 
     @Autowired
-    private ClienteRepository clienteRepository;
-
-    @Autowired
     private EnvioRepository envioRepository;
 
     @Autowired
@@ -75,17 +70,33 @@ class HistorialEstadoListenerIntegrationTest {
      *
      * @return el envío persistido
      */
-    private Envio nuevoEnvioPersistido() {
-        Cliente cliente = clienteRepository.save(new Cliente(
-                "Juan Pérez",
-                "juan+" + UUID.randomUUID() + "@example.com",
-                "3884123456"));
 
-        Direccion direccion = new Direccion("Calle", "123", "San Salvador de Jujuy", "4600");
-        Envio envio = new Envio(cliente, direccion, direccion, 1.0, 1.0, 1.0, 1.0);
+    /**
+     * Persiste un envío PENDIENTE con un identificador de cliente.
+     *
+     * @return el envío persistido
+     */
+    private Envio nuevoEnvioPersistido() {
+        UUID clienteId = UUID.randomUUID();
+
+        Direccion direccion = new Direccion(
+                "Calle",
+                "123",
+                "San Salvador de Jujuy",
+                "4600");
+
+        Envio envio = new Envio(
+                clienteId,
+                direccion,
+                direccion,
+                1.0,
+                1.0,
+                1.0,
+                1.0);
 
         return envioRepository.save(envio);
     }
+
 
     @Test
     void debeRegistrarHistorialConEstadoAnteriorNuloEnElAltaInicial() {

@@ -9,7 +9,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -26,19 +25,17 @@ import com.logitrack.shipment.dto.request.EnvioRequest;
 import com.logitrack.shipment.dto.response.EnvioResponse;
 import com.logitrack.shipment.enums.EstadoEnvio;
 import com.logitrack.shipment.event.EnvioEstadoCambiadoEvent;
-import com.logitrack.shipment.exception.RecursoNoEncontradoException;
-import com.logitrack.shipment.model.Cliente;
 import com.logitrack.shipment.model.Envio;
-import com.logitrack.shipment.repository.ClienteRepository;
 import com.logitrack.shipment.repository.EnvioRepository;
 
 /**
  * Pruebas unitarias de {@link EnvioServiceImpl}.
  *
- * <p>Se verifican el registro de un envío y el comportamiento del servicio
- * cuando el cliente solicitado no existe. Los repositorios y el publicador
- * de eventos se simulan mediante Mockito, por lo que estas pruebas no
- * requieren una base de datos real ni levantar el contexto de Spring.</p>
+ * <p>Verifica el registro de envíos, la conservación de la identidad
+ * del cliente y la publicación del evento inicial. También comprueba
+ * que un fallo de persistencia no provoque la publicación del evento.</p>
+ *
+ * @author dominox45
  */
 @ExtendWith(MockitoExtension.class)
 class EnvioServiceImplTest {
@@ -47,34 +44,35 @@ class EnvioServiceImplTest {
     private EnvioRepository envioRepository;
 
     @Mock
-    private ClienteRepository clienteRepository;
-
-    @Mock
     private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private EnvioServiceImpl envioService;
 
     private UUID clienteId;
-    private Cliente cliente;
     private EnvioRequest request;
 
     /**
-     * Prepara los datos comunes utilizados por las pruebas.
-     *
-     * <p>Se crea un cliente válido y una solicitud con direcciones y
-     * dimensiones de ejemplo. Cada prueba recibe una preparación nueva.</p>
+     * Prepara una solicitud válida para las pruebas.
      */
     @BeforeEach
     void setUp() {
         clienteId = UUID.randomUUID();
-        cliente = new Cliente("Cliente de prueba",
-                "cliente.prueba@example.com", "3884000000");
 
         request = new EnvioRequest(
                 clienteId,
-                new DireccionDto("Belgrano", "123", "San Salvador de Jujuy", "4600"),
-                new DireccionDto("Alvear", "456", "San Salvador de Jujuy", "4600"),
+                new DireccionDto(
+                        "Belgrano",
+                        "123",
+                        "San Salvador de Jujuy",
+                        "4600"
+                ),
+                new DireccionDto(
+                        "Alvear",
+                        "456",
+                        "San Salvador de Jujuy",
+                        "4600"
+                ),
                 2.5,
                 20.0,
                 15.0,
@@ -83,26 +81,19 @@ class EnvioServiceImplTest {
     }
 
     /**
-     * Comprueba que un envío se registra con estado inicial PENDIENTE
-     * y que se publica el evento correspondiente.
-     *
-     * <p>El repositorio simulado devuelve la misma entidad recibida en
-     * {@code save}, reproduciendo el comportamiento necesario para esta
-     * prueba sin persistir datos realmente.</p>
+     * Comprueba que el envío se registra como PENDIENTE,
+     * conserva el UUID del cliente y publica el evento inicial.
      */
     @Test
     void debeRegistrarEnvioPendienteYPublicarEvento() {
-        when(clienteRepository.findById(clienteId))
-                .thenReturn(Optional.of(cliente));
-
         when(envioRepository.save(any(Envio.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         EnvioResponse response = envioService.registrar(request);
 
         assertNotNull(response);
+        assertEquals(clienteId, response.clienteId());
         assertEquals(EstadoEnvio.PENDIENTE, response.estado());
-        assertEquals("Cliente de prueba", response.clienteNombre());
         assertEquals(2.5, response.peso());
         assertNotNull(response.codigoSeguimiento());
 
@@ -113,6 +104,7 @@ class EnvioServiceImplTest {
 
         Envio envioGuardado = envioCaptor.getValue();
 
+        assertEquals(clienteId, envioGuardado.getClienteId());
         assertEquals(EstadoEnvio.PENDIENTE, envioGuardado.getEstado());
         assertNotNull(envioGuardado.getCodigoSeguimiento());
 
@@ -129,22 +121,19 @@ class EnvioServiceImplTest {
     }
 
     /**
-     * Comprueba que el registro falla si el cliente indicado no existe.
-     *
-     * <p>El servicio debe lanzar {@link RecursoNoEncontradoException},
-     * no guardar el envío y no publicar un evento de cambio de estado.</p>
+     * Comprueba que un fallo al guardar el envío se propaga
+     * y no publica el evento de registro.
      */
     @Test
-    void noDebeRegistrarEnvioSiElClienteNoExiste() {
-        when(clienteRepository.findById(clienteId))
-                .thenReturn(Optional.empty());
+    void noDebePublicarEventoSiFallaLaPersistencia() {
+        when(envioRepository.save(any(Envio.class)))
+                .thenThrow(new RuntimeException("Error de persistencia"));
 
         assertThrows(
-                RecursoNoEncontradoException.class,
+                RuntimeException.class,
                 () -> envioService.registrar(request)
         );
 
-        verify(envioRepository, never()).save(any(Envio.class));
         verify(eventPublisher, never()).publishEvent(any());
     }
 }

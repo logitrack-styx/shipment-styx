@@ -7,20 +7,23 @@ import com.logitrack.shipment.enums.EstadoEnvio;
 import com.logitrack.shipment.model.Envio;
 
 /**
- * Representación de un envío expuesta por la API. No contiene entidades
- * ni colecciones JPA.
+ * DTO que representa la información de un envío expuesta por la API REST.
  *
- * @param id                identificador del envío
- * @param codigoSeguimiento código de seguimiento público
- * @param estado            estado actual
- * @param clienteId         id del cliente
- * @param clienteNombre     nombre del cliente
- * @param origen            dirección de origen
- * @param destino           dirección de destino
- * @param peso              peso del paquete
- * @param ancho             ancho del paquete
- * @param alto              alto del paquete
- * @param largo             largo del paquete
+ * <p>Desacopla la respuesta HTTP de la entidad JPA y de los modelos
+ * pertenecientes a otros microservicios. Los clientes y repartidores se
+ * identifican mediante UUID, sin exponer entidades relacionadas.</p>
+ *
+ * @param id identificador único del envío
+ * @param codigoSeguimiento código público de seguimiento
+ * @param estado estado actual del envío
+ * @param clienteId identificador del cliente propietario
+ * @param repartidorId identificador del repartidor asignado, o {@code null}
+ * @param origen dirección de origen
+ * @param destino dirección de destino
+ * @param peso peso del paquete
+ * @param ancho ancho del paquete
+ * @param alto alto del paquete
+ * @param largo largo del paquete
  * @author dominox45
  */
 public record EnvioResponse(
@@ -28,7 +31,7 @@ public record EnvioResponse(
         UUID codigoSeguimiento,
         EstadoEnvio estado,
         UUID clienteId,
-        String clienteNombre,
+        UUID repartidorId,
         DireccionDto origen,
         DireccionDto destino,
         double peso,
@@ -37,16 +40,24 @@ public record EnvioResponse(
         double largo) {
 
     /**
-     * Construye la respuesta a partir de la entidad. Debe invocarse dentro
-     * de la transacción, porque accede al cliente (carga perezosa).
+     * Construye el DTO a partir de una entidad de envío.
      *
-     * @param envio envío persistido
-     * @return DTO de respuesta
+     * @param envio entidad que contiene los datos del envío
+     * @return representación del envío para la API
+     * @throws NullPointerException si {@code envio} es {@code null}
      */
     public static EnvioResponse from(Envio envio) {
-        return new EnvioResponse(envio.getId(), envio.getCodigoSeguimiento(), envio.getEstado(),
-                envio.getCliente().getId(), envio.getCliente().getNombre(),
-                DireccionDto.from(envio.getOrigen()), DireccionDto.from(envio.getDestino()),
-                envio.getPeso(), envio.getAncho(), envio.getAlto(), envio.getLargo());
+        return new EnvioResponse(
+                envio.getId(),
+                envio.getCodigoSeguimiento(),
+                envio.getEstado(),
+                envio.getClienteId(),
+                envio.getRepartidorId(),
+                DireccionDto.from(envio.getOrigen()),
+                DireccionDto.from(envio.getDestino()),
+                envio.getPeso(),
+                envio.getAncho(),
+                envio.getAlto(),
+                envio.getLargo());
     }
 }

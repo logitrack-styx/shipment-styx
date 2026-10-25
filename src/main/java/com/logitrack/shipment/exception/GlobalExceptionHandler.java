@@ -143,4 +143,31 @@ public class GlobalExceptionHandler {
                 .build();
         return ResponseEntity.status(status).body(respuesta);
     }
+
+
+    /**
+     * Traduce los errores de integración con courier-service al estado HTTP
+     * definido por el contrato técnico.
+     *
+     * @param ex excepción con el estado HTTP y el mensaje controlado
+     * @param request petición HTTP que originó el error
+     * @return respuesta con el formato común de errores
+     */
+    @ExceptionHandler(CourierIntegrationException.class)
+    public ResponseEntity<ErrorResponse> handleCourierIntegration(
+            CourierIntegrationException ex,
+            HttpServletRequest request) {
+
+        HttpStatus status = ex.getStatus();
+
+        ErrorResponse respuesta = ErrorResponse.builder()
+                .status(status.value())
+                .error(status.getReasonPhrase())
+                .mensaje(ex.getMessage())
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        return ResponseEntity.status(status).body(respuesta);
+    }
+
 }

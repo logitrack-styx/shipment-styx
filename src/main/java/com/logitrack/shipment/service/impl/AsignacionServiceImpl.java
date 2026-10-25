@@ -1,17 +1,16 @@
+
 package com.logitrack.shipment.service.impl;
 
 import java.util.UUID;
 
+import com.logitrack.shipment.client.CourierClient;
 import com.logitrack.shipment.dto.request.AsignacionRequest;
 import com.logitrack.shipment.dto.response.AsignacionResponse;
 import com.logitrack.shipment.enums.EstadoEnvio;
-import com.logitrack.shipment.enums.EstadoRepartidor;
 import com.logitrack.shipment.exception.RecursoNoEncontradoException;
 import com.logitrack.shipment.exception.TransicionEstadoInvalidaException;
 import com.logitrack.shipment.model.Envio;
-import com.logitrack.shipment.model.Repartidor;
 import com.logitrack.shipment.repository.EnvioRepository;
-import com.logitrack.shipment.repository.RepartidorRepository;
 import com.logitrack.shipment.service.interfaces.AsignacionService;
 
 import lombok.RequiredArgsConstructor;
@@ -21,25 +20,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Implementación del caso de uso de asignación (contrato 2.7 del plan de trabajo).
+ * Implementa la asignación de repartidores a envíos.
  *
- * <p>Reglas aplicadas, en orden:</p>
- * <ol>
- *   <li>El envío debe existir → si no, 404 ({@link RecursoNoEncontradoException}).</li>
- *   <li>El repartidor debe existir → si no, 404.</li>
- *   <li>El repartidor debe estar ACTIVO → si no, 409 ({@link TransicionEstadoInvalidaException}).</li>
- *   <li>Las reglas propias del envío (debe estar PENDIENTE y no tener ya un
- *       repartidor) las protege el dominio en
- *       {@link Envio#asignarRepartidor(Repartidor)} → si no se cumplen, 409
- *       (una segunda asignación nunca sobrescribe la primera silenciosamente).</li>
- * </ol>
+ * <p>Consulta la disponibilidad en courier-service y almacena únicamente
+ * el UUID del repartidor, sin establecer relaciones JPA entre servicios.</p>
  *
- * <p>La asociación se persiste en la misma transacción y NO cambia el estado
- * del envío: la transición a EN_RUTA se hace, aparte, mediante
- * {@code EnvioService.cambiarEstado}, que a su vez valida en el dominio que
- * exista un repartidor asignado.</p>
- *
- * @author TheMiggaCool
+ * @author dominox45
  */
 @Service
 @RequiredArgsConstructor
@@ -47,53 +33,64 @@ import org.springframework.transaction.annotation.Transactional;
 public class AsignacionServiceImpl implements AsignacionService {
 
     private final EnvioRepository envioRepository;
-    private final RepartidorRepository repartidorRepository;
+    private final CourierClient courierClient;
 
     /**
-     * Asigna un repartidor activo a un envío pendiente sin cambiar su estado.
+     * Asigna un repartidor disponible a un envío pendiente.
      *
-     * @param envioId id del envío
+     * @param envioId identificador UUID del envío
      * @param request datos de la asignación
-     * @return datos del envío y del repartidor asignado
-     * @throws RecursoNoEncontradoException      si el envío o el repartidor no existen
-     * @throws TransicionEstadoInvalidaException si el repartidor está inactivo o el envío no admite asignación
+     * @param authorizationHeader cabecera Authorization del administrador
+     * @return datos de la asignación realizada
+     * @throws RecursoNoEncontradoException si el envío no existe o el
+     *         repartidor no existe en courier-service
+     * @throws TransicionEstadoInvalidaException si el envío no admite
+     *         asignación o el repartidor no está disponible
      */
     @Override
     @Transactional
-    public AsignacionResponse asignarRepartidor(UUID envioId, AsignacionRequest request) {
+    public AsignacionResponse asignarRepartidor(
+            UUID envioId,
+            AsignacionRequest request,
+            String authorizationHeader) {
+
         Envio envio = envioRepository.findById(envioId)
                 .orElseThrow(() -> new RecursoNoEncontradoException(
                         "No existe un envío con id " + envioId));
 
-        Repartidor repartidor = repartidorRepository.findById(request.getRepartidorId())
-                .orElseThrow(() -> new RecursoNoEncontradoException(
-                        "No existe un repartidor con id " + request.getRepartidorId()));
-
-        if (repartidor.getEstadoRepartidor() != EstadoRepartidor.ACTIVO) {
-            throw new TransicionEstadoInvalidaException(
-                    "El repartidor " + repartidor.getId() + " no está ACTIVO");
-        }
-
         if (envio.getEstado() != EstadoEnvio.PENDIENTE) {
             throw new TransicionEstadoInvalidaException(
-                    "Solo se puede asignar un repartidor a un envío en estado PENDIENTE");
+                    "Solo se puede asignar un repartidor a un envío PENDIENTE");
         }
 
-        if (envio.getRepartidor() != null) {
+        if (envio.getRepartidorId() != null) {
             throw new TransicionEstadoInvalidaException(
-                    "El envío " + envio.getId() + " ya tiene un repartidor asignado");
+                    "El envío " + envioId + " ya tiene un repartidor asignado");
         }
 
-        envio.asignarRepartidor(repartidor);
+        UUID repartidorId = request.getRepartidorId();
+
+        boolean disponible = courierClient.estaDisponible(
+                repartidorId,
+                authorizationHeader);
+
+        if (!disponible) {
+            throw new TransicionEstadoInvalidaException(
+                    "El repartidor " + repartidorId + " no está disponible");
+        }
+
+        envio.asignarRepartidor(repartidorId);
         Envio envioActualizado = envioRepository.save(envio);
 
-        log.info("Repartidor {} asignado al envío {}", repartidor.getId(), envioActualizado.getId());
+        log.info(
+                "Repartidor {} asignado al envío {}",
+                repartidorId,
+                envioActualizado.getId());
 
         return AsignacionResponse.builder()
                 .envioId(envioActualizado.getId())
                 .codigoSeguimiento(envioActualizado.getCodigoSeguimiento())
-                .repartidorId(repartidor.getId())
-                .repartidorNombre(repartidor.getNombre())
+                .repartidorId(repartidorId)
                 .build();
     }
 }

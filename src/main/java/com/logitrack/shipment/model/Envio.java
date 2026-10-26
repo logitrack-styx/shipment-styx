@@ -89,10 +89,10 @@ public class Envio extends AuditableEntity {
      */
     @Embedded
     @AttributeOverrides({
-            @AttributeOverride(name = "calle", column = @Column(name = "origen_calle")),
-            @AttributeOverride(name = "numero", column = @Column(name = "origen_numero")),
-            @AttributeOverride(name = "ciudad", column = @Column(name = "origen_ciudad")),
-            @AttributeOverride(name = "codigoPostal", column = @Column(name = "origen_codigo_postal"))
+            @AttributeOverride(name = "calle", column = @Column(name = "origen_calle", nullable = false)),
+            @AttributeOverride(name = "numero", column = @Column(name = "origen_numero", nullable = false)),
+            @AttributeOverride(name = "ciudad", column = @Column(name = "origen_ciudad", nullable = false)),
+            @AttributeOverride(name = "codigoPostal", column = @Column(name = "origen_codigo_postal", nullable = false))
     })
     private Direccion origen;
 
@@ -101,10 +101,10 @@ public class Envio extends AuditableEntity {
      */
     @Embedded
     @AttributeOverrides({
-            @AttributeOverride(name = "calle", column = @Column(name = "destino_calle")),
-            @AttributeOverride(name = "numero", column = @Column(name = "destino_numero")),
-            @AttributeOverride(name = "ciudad", column = @Column(name = "destino_ciudad")),
-            @AttributeOverride(name = "codigoPostal", column = @Column(name = "destino_codigo_postal"))
+            @AttributeOverride(name = "calle", column = @Column(name = "destino_calle", nullable = false)),
+            @AttributeOverride(name = "numero", column = @Column(name = "destino_numero", nullable = false)),
+            @AttributeOverride(name = "ciudad", column = @Column(name = "destino_ciudad", nullable = false)),
+            @AttributeOverride(name = "codigoPostal", column = @Column(name = "destino_codigo_postal", nullable = false))
     })
     private Direccion destino;
 

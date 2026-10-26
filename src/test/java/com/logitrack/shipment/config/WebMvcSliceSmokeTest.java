@@ -7,9 +7,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.logitrack.shipment.service.interfaces.AsignacionService;
-import com.logitrack.shipment.service.interfaces.ClienteService;
 import com.logitrack.shipment.service.interfaces.EnvioService;
-import com.logitrack.shipment.service.interfaces.RepartidorService;
+
 
 /**
  * Comprueba que un slice web arranca sin cargar el metamodelo JPA.
@@ -28,11 +27,6 @@ class WebMvcSliceSmokeTest {
     @MockitoBean
     private EnvioService envioService;
 
-    @MockitoBean
-    private ClienteService clienteService;
-
-    @MockitoBean
-    private RepartidorService repartidorService;
 
     @MockitoBean
     private AsignacionService asignacionService;

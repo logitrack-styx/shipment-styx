@@ -1,20 +1,32 @@
 package com.logitrack.shipment.exception;
+
+import java.time.OffsetDateTime;
+
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
-
+/**
+ * Representa la respuesta HTTP generada ante un error de la API.
+ *
+ * @author TheMiggaCool
+ */
 @Getter
 @Setter
 @Builder
-/**
- * Respuesta del sistema a excepciones personalizadas
- * @author TheMiggaCool
- */
+@AllArgsConstructor
 public class ErrorResponse {
+
+    /** Código numérico HTTP. */
     private int status;
+
+    /** Descripción breve del error. */
     private String error;
+
+    /** Detalle del error que puede exponerse al cliente. */
     private String mensaje;
-    private LocalDateTime timestamp;
+
+    /** Fecha y hora en que se generó la respuesta. */
+    private OffsetDateTime timestamp;
 }

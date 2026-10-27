@@ -2,15 +2,60 @@ spring:
   application:
     name: shipment-service
 
+  config:
+    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
+
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/logitrack}
+    url: ${DB_URL:jdbc:mysql://localhost:3306/logitrack_shipment}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
+    open-in-view: false
 
-  output:
-    ansi:
-      enabled: ALWAYS
+  flyway:
+    enabled: true
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          public-key-location: ${JWT_PUBLIC_KEY_LOCATION:classpath:keys/jwt-test-public.pem}
+
+server:
+  port: ${SERVER_PORT:8083}
+
+security:
+  jwt:
+    issuer: ${JWT_ISSUER:logitrack-security}
+    public-key-location: ${JWT_PUBLIC_KEY_LOCATION:classpath:keys/jwt-test-public.pem}
+
+courier:
+  service:
+    url: ${COURIER_SERVICE_URL:http://localhost:8082}
+    connect-timeout-ms: ${COURIER_CONNECT_TIMEOUT_MS:2000}
+    read-timeout-ms: ${COURIER_READ_TIMEOUT_MS:3000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:INFO}
+    com.logitrack.shipment: ${LOG_LEVEL_APP:INFO}

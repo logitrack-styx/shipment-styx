@@ -8,3 +8,15 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
+
+  flyway:
+    enabled: false
+
+  cloud:
+    config:
+      enabled: false
+
+security:
+  jwt:
+    issuer: logitrack-security
+    public-key-location: classpath:keys/jwt-test-public.pem

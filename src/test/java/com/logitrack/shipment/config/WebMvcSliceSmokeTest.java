@@ -5,11 +5,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.test.context.ActiveProfiles;
 
 import com.logitrack.shipment.service.interfaces.AsignacionService;
-import com.logitrack.shipment.service.interfaces.ClienteService;
 import com.logitrack.shipment.service.interfaces.EnvioService;
-import com.logitrack.shipment.service.interfaces.RepartidorService;
+
 
 /**
  * Comprueba que un slice web arranca sin cargar el metamodelo JPA.
@@ -20,6 +21,8 @@ import com.logitrack.shipment.service.interfaces.RepartidorService;
  * al sumar un controlador nuevo hay que agregar aquí su servicio.</p>
  */
 @WebMvcTest
+@ActiveProfiles("test")
+@AutoConfigureMockMvc(addFilters = false)
 class WebMvcSliceSmokeTest {
 
     @Autowired
@@ -28,11 +31,6 @@ class WebMvcSliceSmokeTest {
     @MockitoBean
     private EnvioService envioService;
 
-    @MockitoBean
-    private ClienteService clienteService;
-
-    @MockitoBean
-    private RepartidorService repartidorService;
 
     @MockitoBean
     private AsignacionService asignacionService;

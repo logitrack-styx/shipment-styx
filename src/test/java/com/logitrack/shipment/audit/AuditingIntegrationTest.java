@@ -8,7 +8,9 @@ import java.time.Instant;
 import java.util.UUID;
 
 import com.logitrack.shipment.config.JpaAuditingConfig;
-import com.logitrack.shipment.model.Cliente;
+import com.logitrack.shipment.enums.EstadoEnvio;
+import com.logitrack.shipment.model.Direccion;
+import com.logitrack.shipment.model.Envio;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,43 +33,62 @@ class AuditingIntegrationTest {
     private TestEntityManager entityManager;
 
     /**
-     * Comprueba que las fechas se establezcan al crear un cliente
+     * Comprueba que las fechas se establezcan al crear un envío
      * y que solo la fecha de modificación cambie al actualizarlo.
      */
     @Test
     void debeRegistrarCreacionYActualizacion() throws InterruptedException {
-        Cliente cliente = new Cliente(
-                "Juan Pérez",
-                "juan@example.com",
-                "3884123456"
+        Envio envio = new Envio(
+                UUID.randomUUID(),
+                new Direccion(
+                        "Belgrano",
+                        "123",
+                        "San Salvador de Jujuy",
+                        "4600"
+                ),
+                new Direccion(
+                        "Alvear",
+                        "456",
+                        "San Salvador de Jujuy",
+                        "4600"
+                ),
+                2.5,
+                20.0,
+                15.0,
+                30.0
         );
 
-        // 1. Persistir y sincronizar con la base
-        entityManager.persistAndFlush(cliente);
-        UUID id = cliente.getId();
+        // 1. Persistir y sincronizar con la base.
+        entityManager.persistAndFlush(envio);
+        UUID id = envio.getId();
 
-        // 2. Limpiar el contexto para forzar lectura real desde la base
+        // 2. Limpiar el contexto para forzar una lectura desde la base.
         entityManager.clear();
 
-        // 3. Releer: las fechas ahora tienen la precisión que guarda la base
-        Cliente guardado = entityManager.find(Cliente.class, id);
+        // 3. Releer y capturar las fechas de auditoría iniciales.
+        Envio guardado = entityManager.find(Envio.class, id);
         Instant fechaCreacion = guardado.getCreatedDate();
         Instant primeraModificacion = guardado.getLastModifiedDate();
 
         assertNotNull(id);
+        assertNotNull(guardado);
         assertNotNull(fechaCreacion);
         assertNotNull(primeraModificacion);
+        assertEquals(EstadoEnvio.PENDIENTE, guardado.getEstado());
 
-        // Evita que dos operaciones consecutivas queden en el mismo instante.
+        // Evitar que ambas operaciones queden en el mismo instante.
         Thread.sleep(20);
 
-        guardado.setNombre("Juan Pérez Actualizado");
+        // 4. Modificar el envío mediante una transición válida del dominio.
+        guardado.cancelar();
         entityManager.persistAndFlush(guardado);
         entityManager.clear();
 
-        Cliente actualizado = entityManager.find(Cliente.class, id);
+        // 5. Releer y comprobar las fechas después de la modificación.
+        Envio actualizado = entityManager.find(Envio.class, id);
 
         assertNotNull(actualizado);
+        assertEquals(EstadoEnvio.CANCELADO, actualizado.getEstado());
         assertEquals(fechaCreacion, actualizado.getCreatedDate());
         assertNotNull(actualizado.getLastModifiedDate());
         assertTrue(

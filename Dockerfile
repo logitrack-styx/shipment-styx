@@ -1,30 +1,31 @@
+# Construcción multietapa con Maven y Java 25.
+FROM maven:3-eclipse-temurin-25 AS build
 
-# Etapa 1: compilación de la aplicación.
-FROM eclipse-temurin:25-jdk AS build
+WORKDIR /workspace
 
-WORKDIR /app
+COPY pom.xml .
+RUN mvn -q -DskipTests dependency:go-offline
 
-COPY .mvn/ .mvn/
-COPY mvnw pom.xml ./
+COPY src src
+RUN mvn -q clean package -DskipTests
 
-RUN chmod +x mvnw && ./mvnw -q dependency:go-offline
-
-COPY src/ src/
-
-RUN ./mvnw -q clean package -DskipTests
-
-
-# Etapa 2: ejecución de la aplicación.
+# Imagen de ejecución con JRE, sin herramientas de compilación.
 FROM eclipse-temurin:25-jre
 
 WORKDIR /app
 
-RUN useradd --system --no-create-home appuser
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --no-create-home --shell /usr/sbin/nologin appuser
 
-COPY --from=build /app/target/*.jar app.jar
+COPY --from=build /workspace/target/shipment-service-*.jar /app/app.jar
 
 USER appuser
 
-EXPOSE 8080
+EXPOSE 8083
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD curl --fail --silent http://localhost:8083/actuator/health || exit 1
+
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

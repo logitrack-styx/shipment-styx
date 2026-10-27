@@ -6,21 +6,22 @@ import com.logitrack.shipment.dto.request.AsignacionRequest;
 import com.logitrack.shipment.dto.response.AsignacionResponse;
 
 /**
- * Caso de uso de asignación de repartidores a envíos (contrato 2.7).
- *
- * <p>No forma parte de {@link EnvioService}: la asignación no cambia el
- * estado del envío, solo persiste la relación envío–repartidor.</p>
+ * Define el caso de uso de asignación de repartidores a envíos.
  *
  * @author TheMiggaCool
  */
 public interface AsignacionService {
 
     /**
-     * Asigna un repartidor ACTIVO a un envío PENDIENTE.
+     * Asigna un repartidor disponible a un envío pendiente.
      *
-     * @param envioId id del envío
-     * @param request datos de la asignación (id del repartidor)
-     * @return datos de la asignación resultante
+     * @param envioId identificador UUID del envío
+     * @param request datos de la asignación
+     * @param authorizationHeader cabecera Authorization del administrador
+     * @return información del envío y del repartidor asignado
      */
-    AsignacionResponse asignarRepartidor(UUID envioId, AsignacionRequest request);
+    AsignacionResponse asignarRepartidor(
+            UUID envioId,
+            AsignacionRequest request,
+            String authorizationHeader);
 }

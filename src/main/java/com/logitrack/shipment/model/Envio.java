@@ -15,12 +15,9 @@ import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
@@ -28,17 +25,16 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import jakarta.persistence.Version;
+
 /**
- * Representa un envío en LogiTrack y protege las reglas de su ciclo de vida.
+ * Representa una entidad de envío dentro del sistema LogiTrack.
+ * Gestiona el ciclo de vida del paquete, sus dimensiones, direcciones de origen
+ * y destino, asignación de repartidores y validaciones de cambio de estado.
  *
- * <p>Flujo permitido: {@code PENDIENTE -> EN_RUTA -> ENTREGADO}, o
- * {@code PENDIENTE -> CANCELADO}. Pasar a {@code EN_RUTA} requiere un
- * repartidor asignado. El estado y el repartidor solo se modifican mediante
- * los métodos de esta clase, por eso no hay setters.</p>
+ * Extiende de {@link AuditableEntity} para el control de auditoría (fechas de creación/modificación).
  *
- * <p>Para exponer información mediante la API REST deben utilizarse DTOs.</p>
- *
- * @author TheMiggaCool
+ * @author dominox45
  */
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -46,90 +42,131 @@ import lombok.NoArgsConstructor;
 @Table(name = "envios")
 public class Envio extends AuditableEntity {
 
-    /** Identificador único del envío. */
+    /**
+     * Identificador único universal del envío (Clave primaria).
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    /** Código de seguimiento público; se genera al crear el envío y no cambia. */
+    /**
+     * Versión optimista de la entidad para detectar actualizaciones concurrentes.
+     *
+     * <p>Hibernate incrementa este valor cuando actualiza una instancia gestionada.
+     * La actualización condicional de asignación también lo incrementa de forma
+     * explícita porque utiliza una consulta masiva.</p>
+     */
+    @Version
+    @Column(name = "version", nullable = false)
+    private long version;
+
+    /**
+     * Código único generado automáticamente para el seguimiento externo del envío.
+     */
     @Column(name = "codigo_seguimiento", nullable = false, unique = true, updatable = false)
     private UUID codigoSeguimiento;
 
-    /** Peso del paquete. */
+    /**
+     * Peso del paquete en kilogramos.
+     */
     @Column(nullable = false)
     private double peso;
 
-    /** Ancho del paquete. */
+    /**
+     * Ancho del paquete en centímetros.
+     */
     @Column(nullable = false)
     private double ancho;
 
-    /** Alto del paquete. */
+    /**
+     * Alto del paquete en centímetros.
+     */
     @Column(nullable = false)
     private double alto;
 
-    /** Largo del paquete. */
+    /**
+     * Largo del paquete en centímetros.
+     */
     @Column(nullable = false)
     private double largo;
 
-    /** Estado actual del envío. */
+    /**
+     * Estado actual en el que se encuentra el envío.
+     */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private EstadoEnvio estado;
 
     /**
-     * Dirección de origen. Origen y destino usan la misma clase, por lo que se
-     * renombran las columnas con {@code @AttributeOverrides} para evitar duplicados.
+     * Dirección física de origen de donde se retira el paquete.
      */
     @Embedded
     @AttributeOverrides({
-            @AttributeOverride(name = "calle", column = @Column(name = "origen_calle")),
-            @AttributeOverride(name = "numero", column = @Column(name = "origen_numero")),
-            @AttributeOverride(name = "ciudad", column = @Column(name = "origen_ciudad")),
-            @AttributeOverride(name = "codigoPostal", column = @Column(name = "origen_codigo_postal"))
+            @AttributeOverride(name = "calle", column = @Column(name = "origen_calle", nullable = false)),
+            @AttributeOverride(name = "numero", column = @Column(name = "origen_numero", nullable = false)),
+            @AttributeOverride(name = "ciudad", column = @Column(name = "origen_ciudad", nullable = false)),
+            @AttributeOverride(name = "codigoPostal", column = @Column(name = "origen_codigo_postal", nullable = false))
     })
     private Direccion origen;
 
-    /** Dirección de destino. */
+    /**
+     * Dirección física de destino a donde se entregará el paquete.
+     */
     @Embedded
     @AttributeOverrides({
-            @AttributeOverride(name = "calle", column = @Column(name = "destino_calle")),
-            @AttributeOverride(name = "numero", column = @Column(name = "destino_numero")),
-            @AttributeOverride(name = "ciudad", column = @Column(name = "destino_ciudad")),
-            @AttributeOverride(name = "codigoPostal", column = @Column(name = "destino_codigo_postal"))
+            @AttributeOverride(name = "calle", column = @Column(name = "destino_calle", nullable = false)),
+            @AttributeOverride(name = "numero", column = @Column(name = "destino_numero", nullable = false)),
+            @AttributeOverride(name = "ciudad", column = @Column(name = "destino_ciudad", nullable = false)),
+            @AttributeOverride(name = "codigoPostal", column = @Column(name = "destino_codigo_postal", nullable = false))
     })
     private Direccion destino;
 
-    /** Cliente que solicitó el envío (relación n-1). */
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "cliente_id", nullable = false)
-    private Cliente cliente;
-
-    /** Repartidor asignado (relación n-1). Es nulo hasta que se asigna, antes de pasar a EN_RUTA. */
-    @ManyToOne(fetch = FetchType.LAZY, optional = true)
-    @JoinColumn(name = "repartidor_id", nullable = true)
-    private Repartidor repartidor;
+    /**
+     * Identificador del cliente que solicita y es dueño del envío.
+     */
+    @Column(name = "cliente_id", nullable = false)
+    private UUID clienteId;
 
     /**
-     * Historial de cambios de estado (relación 1-n). Sin cascada: el listener
-     * de auditoría guarda cada registro de forma explícita.
+     * Identificador del repartidor encargado de trasladar el envío (puede ser nulo si no ha sido asignado).
+     */
+    @Column(name = "repartidor_id")
+    private UUID repartidorId;
+
+    /**
+     * Historial de cambios de estado registrados para este envío.
      */
     @OneToMany(mappedBy = "envio")
     private List<HistorialEstado> historial = new ArrayList<>();
 
     /**
-     * Crea un envío nuevo en estado {@code PENDIENTE} con un código de seguimiento generado.
+     * Constructor principal para crear una nueva instancia de un envío.
+     * Al crearse, el envío se inicializa por defecto en estado {@link EstadoEnvio#PENDIENTE}
+     * y se le genera un código de seguimiento único.
      *
-     * @param cliente cliente que solicita el envío
-     * @param origen  dirección de origen
-     * @param destino dirección de destino
-     * @param peso    peso del paquete
-     * @param ancho   ancho del paquete
-     * @param alto    alto del paquete
-     * @param largo   largo del paquete
+     * @param clienteId Identificador único del cliente (obligatorio).
+     * @param origen    Dirección de origen del envío.
+     * @param destino   Dirección de destino del envío.
+     * @param peso      Peso del paquete.
+     * @param ancho     Ancho del paquete.
+     * @param alto      Alto del paquete.
+     * @param largo     Largo del paquete.
+     * @throws IllegalArgumentException si el {@code clienteId} es nulo.
      */
-    public Envio(Cliente cliente, Direccion origen, Direccion destino,
-                 double peso, double ancho, double alto, double largo) {
-        this.cliente = cliente;
+    public Envio(
+            UUID clienteId,
+            Direccion origen,
+            Direccion destino,
+            double peso,
+            double ancho,
+            double alto,
+            double largo) {
+
+        if (clienteId == null) {
+            throw new IllegalArgumentException("El clienteId es obligatorio");
+        }
+
+        this.clienteId = clienteId;
         this.origen = origen;
         this.destino = destino;
         this.peso = peso;
@@ -141,69 +178,88 @@ public class Envio extends AuditableEntity {
     }
 
     /**
-     * Indica si el envío puede cancelarse.
+     * Verifica si el envío se encuentra en condiciones de ser cancelado.
+     * Un envío solo puede cancelarse si está en estado {@link EstadoEnvio#PENDIENTE}.
      *
-     * @return {@code true} únicamente si el estado es {@code PENDIENTE}
+     * @return true si puede cancelarse, false en caso contrario.
      */
     public boolean puedeCancelarse() {
         return estado == EstadoEnvio.PENDIENTE;
     }
 
     /**
-     * Asocia un repartidor al envío sin modificar su estado.
+     * Asigna un repartidor al envío.
+     * Requiere que el envío esté en estado {@link EstadoEnvio#PENDIENTE}, que no posea
+     * un repartidor asignado previamente y que el ID recibido sea válido.
      *
-     * @param repartidor repartidor a asignar
-     * @throws TransicionEstadoInvalidaException si el envío no está PENDIENTE o ya tiene repartidor
+     * @param repartidorId Identificador único del repartidor a asignar.
+     * @throws TransicionEstadoInvalidaException si el envío no está pendiente o ya cuenta con un repartidor.
+     * @throws IllegalArgumentException          si el {@code repartidorId} es nulo.
      */
-    public void asignarRepartidor(Repartidor repartidor) {
+    public void asignarRepartidor(UUID repartidorId) {
         if (estado != EstadoEnvio.PENDIENTE) {
             throw new TransicionEstadoInvalidaException(
                     "Solo se puede asignar repartidor a un envío PENDIENTE");
         }
-        if (this.repartidor != null) {
+
+        if (this.repartidorId != null) {
             throw new TransicionEstadoInvalidaException(
                     "El envío ya tiene un repartidor asignado");
         }
-        this.repartidor = repartidor;
+
+        if (repartidorId == null) {
+            throw new IllegalArgumentException("El repartidorId es obligatorio");
+        }
+
+        this.repartidorId = repartidorId;
     }
 
     /**
-     * Cambia el estado del envío respetando la máquina de estados.
+     * Cambia el estado actual del envío a un nuevo estado, validando las reglas de negocio
+     * y las transiciones permitidas.
      *
-     * @param nuevo estado de destino
-     * @throws TransicionEstadoInvalidaException si la transición no está permitida
-     *         o se intenta pasar a EN_RUTA sin repartidor
+     * @param nuevo El nuevo estado al cual se desea transicionar.
+     * @throws TransicionEstadoInvalidaException si el nuevo estado es nulo, la transición no está permitida,
+     *                                           o si se intenta pasar a {@link EstadoEnvio#EN_RUTA} sin un repartidor asignado.
      */
     public void cambiarEstado(EstadoEnvio nuevo) {
-        if (!esTransicionPermitida(nuevo)) {
+        if (nuevo == null || !esTransicionPermitida(nuevo)) {
             throw new TransicionEstadoInvalidaException(
                     "Transición no permitida: " + estado + " -> " + nuevo);
         }
-        if (nuevo == EstadoEnvio.EN_RUTA && repartidor == null) {
+
+        if (nuevo == EstadoEnvio.EN_RUTA && repartidorId == null) {
             throw new TransicionEstadoInvalidaException(
                     "No se puede pasar a EN_RUTA sin repartidor asignado");
         }
+
         this.estado = nuevo;
     }
 
     /**
-     * Cancela el envío; solo es válido desde {@code PENDIENTE}.
+     * Cancela el envío cambiando su estado a {@link EstadoEnvio#CANCELADO}.
      *
-     * @throws TransicionEstadoInvalidaException si el envío no puede cancelarse
+     * @throws TransicionEstadoInvalidaException si el envío no se encuentra en un estado que permita su cancelación.
      */
     public void cancelar() {
         cambiarEstado(EstadoEnvio.CANCELADO);
     }
 
     /**
-     * Comprueba si la transición desde el estado actual al indicado está permitida.
+     * Evalúa si una transición desde el estado actual hacia el estado especificado es válida.
+     * <ul>
+     *   <li>{@link EstadoEnvio#PENDIENTE} permite pasar a {@link EstadoEnvio#EN_RUTA} o {@link EstadoEnvio#CANCELADO}.</li>
+     *   <li>{@link EstadoEnvio#EN_RUTA} permite pasar a {@link EstadoEnvio#ENTREGADO}.</li>
+     *   <li>{@link EstadoEnvio#ENTREGADO} y {@link EstadoEnvio#CANCELADO} son estados finales (no permiten más transiciones).</li>
+     * </ul>
      *
-     * @param nuevo estado de destino
-     * @return {@code true} si la transición es válida
+     * @param nuevo El estado destino a evaluar.
+     * @return true si la transición es permitida, false en caso contrario.
      */
     private boolean esTransicionPermitida(EstadoEnvio nuevo) {
         return switch (estado) {
-            case PENDIENTE -> nuevo == EstadoEnvio.EN_RUTA || nuevo == EstadoEnvio.CANCELADO;
+            case PENDIENTE ->
+                    nuevo == EstadoEnvio.EN_RUTA || nuevo == EstadoEnvio.CANCELADO;
             case EN_RUTA -> nuevo == EstadoEnvio.ENTREGADO;
             case ENTREGADO, CANCELADO -> false;
         };

@@ -1,3 +1,4 @@
+
 package com.logitrack.shipment.dto.response;
 
 import java.util.UUID;
@@ -6,8 +7,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 /**
- * Respuesta de la operación de asignación: identifica el envío y el
- * repartidor que quedó asignado (contrato 2.7).
+ * Representa el resultado de asignar un repartidor a un envío.
  *
  * @author TheMiggaCool
  */
@@ -15,8 +15,12 @@ import lombok.Getter;
 @Builder
 public class AsignacionResponse {
 
+    /** Identificador del envío. */
     private UUID envioId;
+
+    /** Código de seguimiento del envío. */
     private UUID codigoSeguimiento;
+
+    /** Identificador del repartidor asignado. */
     private UUID repartidorId;
-    private String repartidorNombre;
 }

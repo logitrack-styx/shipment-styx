@@ -1,9 +1,13 @@
+
 package com.logitrack.shipment.service.impl;
 
 import java.util.List;
 import java.util.UUID;
 
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,25 +16,13 @@ import com.logitrack.shipment.dto.response.EnvioResponse;
 import com.logitrack.shipment.enums.EstadoEnvio;
 import com.logitrack.shipment.event.EnvioEstadoCambiadoEvent;
 import com.logitrack.shipment.exception.RecursoNoEncontradoException;
-import com.logitrack.shipment.model.Cliente;
 import com.logitrack.shipment.model.Envio;
-import com.logitrack.shipment.repository.ClienteRepository;
 import com.logitrack.shipment.repository.EnvioRepository;
 import com.logitrack.shipment.service.interfaces.EnvioService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * Implementación de los casos de uso de envíos.
- *
- * <p>Orquesta la búsqueda, la persistencia y la publicación de eventos; las
- * reglas de transición viven en {@link Envio}. Los eventos se publican dentro
- * de la transacción para que el historial se guarde o se revierta junto con
- * la operación.</p>
- *
- * @author dominox45
- */
 @Slf4j
 @Service
 @Transactional
@@ -38,86 +30,362 @@ import lombok.extern.slf4j.Slf4j;
 public class EnvioServiceImpl implements EnvioService {
 
     private final EnvioRepository envioRepository;
-    private final ClienteRepository clienteRepository;
     private final ApplicationEventPublisher eventPublisher;
 
-    /** {@inheritDoc} */
+    /**
+     * Variante heredada: solo ADMIN puede consultar sin comprobar pertenencia.
+     */
     @Override
-    public EnvioResponse registrar(EnvioRequest request) {
-        Cliente cliente = clienteRepository.findById(request.clienteId())
-                .orElseThrow(() -> new RecursoNoEncontradoException(
-                        "Cliente no encontrado: " + request.clienteId()));
-
-        Envio envio = envioRepository.save(new Envio(cliente,
-                request.origen().aEntidad(), request.destino().aEntidad(),
-                request.peso(), request.ancho(), request.alto(), request.largo()));
-
-        eventPublisher.publishEvent(new EnvioEstadoCambiadoEvent(envio, null, envio.getEstado()));
-        log.info("Envío registrado con código de seguimiento {}", envio.getCodigoSeguimiento());
-        return EnvioResponse.from(envio);
-    }
-
-    /** {@inheritDoc} */
-    @Override
+    @PreAuthorize("hasRole('ADMIN')")
     @Transactional(readOnly = true)
     public EnvioResponse obtenerPorId(UUID id) {
         return EnvioResponse.from(buscarPorId(id));
     }
 
-    /** {@inheritDoc} */
+    /**
+     * Variante heredada: solo ADMIN puede consultar sin comprobar pertenencia.
+     */
     @Override
+    @PreAuthorize("hasRole('ADMIN')")
     @Transactional(readOnly = true)
     public EnvioResponse obtenerPorCodigoSeguimiento(UUID codigoSeguimiento) {
-        return EnvioResponse.from(envioRepository.findByCodigoSeguimiento(codigoSeguimiento)
-                .orElseThrow(() -> new RecursoNoEncontradoException(
-                        "Envío no encontrado con código de seguimiento: " + codigoSeguimiento)));
+        return EnvioResponse.from(buscarPorCodigoSeguimiento(codigoSeguimiento));
     }
 
-    /** {@inheritDoc} */
+    /**
+     * Variante heredada: solo ADMIN puede listar sin pasar identidad.
+     */
     @Override
+    @PreAuthorize("hasRole('ADMIN')")
     @Transactional(readOnly = true)
     public List<EnvioResponse> listar(EstadoEnvio estado) {
-        List<Envio> envios = (estado == null)
+        List<Envio> envios = estado == null
                 ? envioRepository.findAll()
                 : envioRepository.findByEstado(estado);
-        return envios.stream().map(EnvioResponse::from).toList();
+
+        return envios.stream()
+                .map(EnvioResponse::from)
+                .toList();
     }
 
-    /** {@inheritDoc} */
+    /**
+     * El listado con JWT queda restringido a ADMIN.
+     */
     @Override
+    @Transactional(readOnly = true)
+    public List<EnvioResponse> listar(EstadoEnvio estado, Jwt jwt) {
+        String role = obtenerRol(jwt);
+
+        if (!"ADMIN".equals(role)) {
+            throw new AccessDeniedException(
+                    "Solo un administrador puede listar los envíos");
+        }
+
+        return listar(estado);
+    }
+
+    /**
+     * Variante heredada: solo ADMIN puede cambiar estados sin identidad.
+     */
+    @Override
+    @PreAuthorize("hasRole('ADMIN')")
     public EnvioResponse cambiarEstado(UUID id, EstadoEnvio nuevoEstado) {
         Envio envio = buscarPorId(id);
-        EstadoEnvio anterior = envio.getEstado();
+        EstadoEnvio estadoAnterior = envio.getEstado();
 
-        // El dominio valida; si lanza excepción, no se publica ningún evento.
         envio.cambiarEstado(nuevoEstado);
-        envioRepository.save(envio);
+        envio = envioRepository.save(envio);
 
-        eventPublisher.publishEvent(new EnvioEstadoCambiadoEvent(envio, anterior, nuevoEstado));
+        eventPublisher.publishEvent(
+                new EnvioEstadoCambiadoEvent(
+                        envio,
+                        estadoAnterior,
+                        envio.getEstado()));
+
         return EnvioResponse.from(envio);
     }
 
-    /** {@inheritDoc} */
+    /**
+     * Variante heredada: solo ADMIN puede cancelar sin identidad.
+     */
     @Override
+    @PreAuthorize("hasRole('ADMIN')")
     public void cancelarEnvio(UUID id) {
         Envio envio = buscarPorId(id);
-        EstadoEnvio anterior = envio.getEstado();
+        EstadoEnvio estadoAnterior = envio.getEstado();
 
         envio.cancelar();
         envioRepository.save(envio);
 
         eventPublisher.publishEvent(
-                new EnvioEstadoCambiadoEvent(envio, anterior, EstadoEnvio.CANCELADO));
+                new EnvioEstadoCambiadoEvent(
+                        envio,
+                        estadoAnterior,
+                        envio.getEstado()));
     }
 
     /**
-     * Busca un envío por id o lanza la excepción de recurso inexistente.
+     * Registra un envío según el rol autenticado.
      *
-     * @param id identificador del envío
-     * @return el envío encontrado
+     * CLIENTE siempre queda asociado al UUID autenticado.
+     * ADMIN debe indicar el cliente destinatario en el request.
      */
+    @Override
+    public EnvioResponse registrar(
+            EnvioRequest request,
+            UUID authenticatedUserId,
+            String role) {
+
+        if ("CLIENTE".equals(role)) {
+            return registrarParaCliente(request, authenticatedUserId);
+        }
+
+        if ("ADMIN".equals(role)) {
+            if (request.clienteId() == null) {
+                throw new IllegalArgumentException(
+                        "ADMIN debe indicar el cliente destinatario");
+            }
+
+            return registrarParaCliente(request, request.clienteId());
+        }
+
+        throw new AccessDeniedException(
+                "El rol no tiene permiso para registrar envíos");
+    }
+
+    private EnvioResponse registrarParaCliente(
+            EnvioRequest request,
+            UUID clienteId) {
+
+        Envio envio = new Envio(
+                clienteId,
+                request.origen().aEntidad(),
+                request.destino().aEntidad(),
+                request.peso(),
+                request.ancho(),
+                request.alto(),
+                request.largo());
+
+        envio = envioRepository.save(envio);
+
+        eventPublisher.publishEvent(
+                new EnvioEstadoCambiadoEvent(
+                        envio,
+                        null,
+                        envio.getEstado()));
+
+        log.info(
+                "Envío registrado con código de seguimiento {}",
+                envio.getCodigoSeguimiento());
+
+        return EnvioResponse.from(envio);
+    }
+
+    /**
+     * Consulta un envío y valida la pertenencia del recurso.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public EnvioResponse obtenerPorId(
+            UUID id,
+            UUID authenticatedUserId,
+            String role) {
+
+        Envio envio = buscarPorId(id);
+        verificarPertenencia(envio, authenticatedUserId, role);
+
+        return EnvioResponse.from(envio);
+    }
+
+    /**
+     * La búsqueda por tracking también valida la pertenencia.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public EnvioResponse obtenerPorCodigoSeguimiento(
+            UUID codigoSeguimiento,
+            UUID authenticatedUserId,
+            String role) {
+
+        Envio envio = buscarPorCodigoSeguimiento(codigoSeguimiento);
+        verificarPertenencia(envio, authenticatedUserId, role);
+
+        return EnvioResponse.from(envio);
+    }
+
+    /**
+     * Solo ADMIN o el repartidor asignado pueden cambiar el estado.
+     */
+    @Override
+    public EnvioResponse cambiarEstado(
+            UUID id,
+            EstadoEnvio nuevoEstado,
+            UUID authenticatedUserId,
+            String role) {
+
+        if ("REPARTIDOR".equals(role)
+                && nuevoEstado == EstadoEnvio.CANCELADO) {
+            throw new AccessDeniedException(
+                    "Un repartidor no puede cancelar un envío mediante el cambio de estado");
+        }
+
+        Envio envio = buscarPorId(id);
+
+        if ("REPARTIDOR".equals(role)) {
+            if (envio.getRepartidorId() == null
+                    || !envio.getRepartidorId().equals(authenticatedUserId)) {
+                throw new AccessDeniedException(
+                        "El envío no está asignado al repartidor autenticado");
+            }
+        } else if (!"ADMIN".equals(role)) {
+            throw new AccessDeniedException(
+                    "El rol no puede cambiar el estado del envío");
+        }
+
+        return cambiarEstado(id, nuevoEstado);
+    }
+
+    /**
+     * CLIENTE solo puede cancelar sus propios envíos.
+     * ADMIN puede cancelar cualquier envío que admita la operación.
+     */
+    @Override
+    public void cancelarEnvio(
+            UUID id,
+            UUID authenticatedUserId,
+            String role) {
+
+        Envio envio = buscarPorId(id);
+
+        if ("CLIENTE".equals(role)) {
+            if (envio.getClienteId() == null
+                    || !envio.getClienteId().equals(authenticatedUserId)) {
+                throw new AccessDeniedException(
+                        "El envío no pertenece al cliente autenticado");
+            }
+        } else if (!"ADMIN".equals(role)) {
+            throw new AccessDeniedException(
+                    "El rol no puede cancelar envíos");
+        }
+
+        cancelarEnvio(id);
+    }
+
+    /*
+     * Adaptadores para operaciones que reciben directamente un JWT.
+     */
+
+    public EnvioResponse registrar(EnvioRequest request, Jwt jwt) {
+        return registrar(
+                request,
+                obtenerUsuarioId(jwt),
+                obtenerRol(jwt));
+    }
+
+    public EnvioResponse obtenerPorId(UUID id, Jwt jwt) {
+        return obtenerPorId(
+                id,
+                obtenerUsuarioId(jwt),
+                obtenerRol(jwt));
+    }
+
+    public EnvioResponse obtenerPorCodigoSeguimiento(
+            UUID codigoSeguimiento,
+            Jwt jwt) {
+
+        return obtenerPorCodigoSeguimiento(
+                codigoSeguimiento,
+                obtenerUsuarioId(jwt),
+                obtenerRol(jwt));
+    }
+
+    public void cancelarEnvio(UUID id, Jwt jwt) {
+        cancelarEnvio(
+                id,
+                obtenerUsuarioId(jwt),
+                obtenerRol(jwt));
+    }
+
+    public EnvioResponse cambiarEstado(
+            UUID id,
+            EstadoEnvio nuevoEstado,
+            Jwt jwt) {
+
+        return cambiarEstado(
+                id,
+                nuevoEstado,
+                obtenerUsuarioId(jwt),
+                obtenerRol(jwt));
+    }
+
+    private UUID obtenerUsuarioId(Jwt jwt) {
+        if (jwt == null || jwt.getSubject() == null) {
+            throw new AccessDeniedException(
+                    "El token no contiene un usuario autenticado");
+        }
+
+        try {
+            return UUID.fromString(jwt.getSubject());
+        } catch (IllegalArgumentException exception) {
+            throw new AccessDeniedException(
+                    "El subject del token no es un UUID válido");
+        }
+    }
+
+    private String obtenerRol(Jwt jwt) {
+        if (jwt == null) {
+            throw new AccessDeniedException("Token no disponible");
+        }
+
+        Object rolesClaim = jwt.getClaims().get("roles");
+
+        if (!(rolesClaim instanceof List<?> roles)
+                || roles.size() != 1
+                || !(roles.get(0) instanceof String role)
+                || role.isBlank()) {
+
+            throw new AccessDeniedException(
+                    "El token no contiene un rol válido");
+        }
+
+        return role;
+    }
+
+    private void verificarPertenencia(
+            Envio envio,
+            UUID authenticatedUserId,
+            String role) {
+
+        if ("ADMIN".equals(role)) {
+            return;
+        }
+
+        if ("CLIENTE".equals(role)
+                && envio.getClienteId() != null
+                && envio.getClienteId().equals(authenticatedUserId)) {
+            return;
+        }
+
+        if ("REPARTIDOR".equals(role)
+                && envio.getRepartidorId() != null
+                && envio.getRepartidorId().equals(authenticatedUserId)) {
+            return;
+        }
+
+        throw new AccessDeniedException(
+                "No tiene acceso a este envío");
+    }
+
     private Envio buscarPorId(UUID id) {
-        return envioRepository.findById(id).orElseThrow(
-                () -> new RecursoNoEncontradoException("Envío no encontrado: " + id));
+        return envioRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "Envío no encontrado: " + id));
+    }
+
+    private Envio buscarPorCodigoSeguimiento(UUID codigoSeguimiento) {
+        return envioRepository.findByCodigoSeguimiento(codigoSeguimiento)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "Envío no encontrado con código de seguimiento: "
+                                + codigoSeguimiento));
     }
 }

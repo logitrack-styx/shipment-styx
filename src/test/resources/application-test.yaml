@@ -1,4 +1,3 @@
-
 spring:
   datasource:
     url: jdbc:h2:mem:logitrack;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE
@@ -12,3 +11,12 @@ spring:
 
   flyway:
     enabled: false
+
+  cloud:
+    config:
+      enabled: false
+
+security:
+  jwt:
+    issuer: logitrack-security
+    public-key-location: classpath:keys/jwt-test-public.pem

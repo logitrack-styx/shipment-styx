@@ -25,6 +25,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import jakarta.persistence.Version;
+
 /**
  * Representa una entidad de envío dentro del sistema LogiTrack.
  * Gestiona el ciclo de vida del paquete, sus dimensiones, direcciones de origen
@@ -46,6 +48,17 @@ public class Envio extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    /**
+     * Versión optimista de la entidad para detectar actualizaciones concurrentes.
+     *
+     * <p>Hibernate incrementa este valor cuando actualiza una instancia gestionada.
+     * La actualización condicional de asignación también lo incrementa de forma
+     * explícita porque utiliza una consulta masiva.</p>
+     */
+    @Version
+    @Column(name = "version", nullable = false)
+    private long version;
 
     /**
      * Código único generado automáticamente para el seguimiento externo del envío.

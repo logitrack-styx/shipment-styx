@@ -1,4 +1,3 @@
-
 package com.logitrack.shipment.service.interfaces;
 
 import java.util.UUID;

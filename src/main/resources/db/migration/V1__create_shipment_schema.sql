@@ -26,9 +26,7 @@ CREATE TABLE envios (
     CONSTRAINT pk_envios PRIMARY KEY (id),
     CONSTRAINT uk_envios_codigo_seguimiento
         UNIQUE (codigo_seguimiento)
-) ENGINE = InnoDB
-  DEFAULT CHARACTER SET = utf8mb4
-  COLLATE = utf8mb4_unicode_ci;
+);
 
 CREATE INDEX idx_envios_estado ON envios (estado);
 
@@ -45,9 +43,7 @@ CREATE TABLE historial_estados (
     CONSTRAINT pk_historial_estados PRIMARY KEY (id),
     CONSTRAINT fk_historial_envio
         FOREIGN KEY (envio) REFERENCES envios (id)
-) ENGINE = InnoDB
-  DEFAULT CHARACTER SET = utf8mb4
-  COLLATE = utf8mb4_unicode_ci;
+);
 
 CREATE INDEX idx_historial_envio_fecha
     ON historial_estados (envio, fecha_hora);

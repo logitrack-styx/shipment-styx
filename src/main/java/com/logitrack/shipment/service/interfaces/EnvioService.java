@@ -1,7 +1,10 @@
+
 package com.logitrack.shipment.service.interfaces;
 
 import java.util.List;
 import java.util.UUID;
+
+import org.springframework.security.oauth2.jwt.Jwt;
 
 import com.logitrack.shipment.dto.request.EnvioRequest;
 import com.logitrack.shipment.dto.response.EnvioResponse;
@@ -14,14 +17,6 @@ import com.logitrack.shipment.enums.EstadoEnvio;
  * @author dominox45
  */
 public interface EnvioService {
-
-    /**
-     * Registra un envío en estado PENDIENTE para un cliente existente.
-     *
-     * @param request datos del envío
-     * @return el envío registrado
-     */
-    EnvioResponse registrar(EnvioRequest request);
 
     /**
      * Consulta un envío por su identificador.
@@ -48,9 +43,18 @@ public interface EnvioService {
     List<EnvioResponse> listar(EstadoEnvio estado);
 
     /**
+     * Lista envíos usando el JWT del usuario autenticado.
+     *
+     * @param estado estado a filtrar; {@code null} devuelve todos
+     * @param jwt token del usuario autenticado
+     * @return lista de envíos
+     */
+    List<EnvioResponse> listar(EstadoEnvio estado, Jwt jwt);
+
+    /**
      * Cambia el estado de un envío respetando la máquina de estados del dominio.
      *
-     * @param id          identificador del envío
+     * @param id identificador del envío
      * @param nuevoEstado estado de destino
      * @return el envío actualizado
      */
@@ -62,4 +66,30 @@ public interface EnvioService {
      * @param id identificador del envío
      */
     void cancelarEnvio(UUID id);
+
+    EnvioResponse registrar(
+            EnvioRequest request,
+            UUID authenticatedUserId,
+            String role);
+
+    EnvioResponse obtenerPorId(
+            UUID id,
+            UUID authenticatedUserId,
+            String role);
+
+    EnvioResponse obtenerPorCodigoSeguimiento(
+            UUID codigoSeguimiento,
+            UUID authenticatedUserId,
+            String role);
+
+    EnvioResponse cambiarEstado(
+            UUID id,
+            EstadoEnvio nuevoEstado,
+            UUID authenticatedUserId,
+            String role);
+
+    void cancelarEnvio(
+            UUID id,
+            UUID authenticatedUserId,
+            String role);
 }

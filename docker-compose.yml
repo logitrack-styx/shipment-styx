@@ -1,25 +1,18 @@
-
 services:
-  mysql:
+  shipment-db:
     image: mysql:8.4
     environment:
-      MYSQL_DATABASE: logitrack
-      MYSQL_USER: ${DB_USERNAME:?Define DB_USERNAME en .env}
-      MYSQL_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en .env}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Define DB_ROOT_PASSWORD en .env}
+      MYSQL_DATABASE: logitrack_shipment
+      MYSQL_USER: ${DB_USERNAME:?Define DB_USERNAME in .env}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Define DB_ROOT_PASSWORD in .env}
     volumes:
-      - mysql_data:/var/lib/mysql
+      - shipment_data:/var/lib/mysql
     healthcheck:
       test:
         [
-          "CMD",
-          "mysqladmin",
-          "ping",
-          "-h",
-          "127.0.0.1",
-          "-u",
-          "root",
-          "-p${DB_ROOT_PASSWORD}"
+          "CMD-SHELL",
+          "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"
         ]
       interval: 10s
       timeout: 5s
@@ -27,20 +20,27 @@ services:
       start_period: 30s
     restart: unless-stopped
 
-  app:
+  shipment-service:
     build:
       context: .
       dockerfile: Dockerfile
     depends_on:
-      mysql:
+      shipment-db:
         condition: service_healthy
     environment:
-      DB_URL: jdbc:mysql://mysql:3306/logitrack
-      DB_USERNAME: ${DB_USERNAME:?Define DB_USERNAME en .env}
-      DB_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en .env}
+      SERVER_PORT: 8083
+      DB_URL: jdbc:mysql://shipment-db:3306/logitrack_shipment
+      DB_USERNAME: ${DB_USERNAME:?Define DB_USERNAME in .env}
+      DB_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD in .env}
+      JWT_PUBLIC_KEY_LOCATION: file:/run/secrets/jwt-public.pem
+      JWT_ISSUER: logitrack-security
+      CONFIG_SERVER_URL: http://config-server:8888
+      COURIER_SERVICE_URL: http://courier-service:8082
     ports:
-      - "8080:8080"
+      - "8083:8083"
+    volumes:
+      - ${JWT_PUBLIC_KEY_FILE:?Set JWT_PUBLIC_KEY_FILE to the public-key PEM path}:/run/secrets/jwt-public.pem:ro
     restart: unless-stopped
 
 volumes:
-  mysql_data:
+  shipment_data:

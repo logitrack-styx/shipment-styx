@@ -1,34 +1,27 @@
-
 package com.logitrack.shipment.client;
 
 import java.util.UUID;
 
 /**
- * Define la comunicación entre shipment-service y courier-service.
+ * Define las operaciones que shipment-service necesita de
+ * {@code courier-service}.
  *
- * <p>Permite consultar la disponibilidad de un repartidor sin acceder
- * directamente a las entidades ni a la base de datos del otro microservicio.</p>
- *
- * <p>El token de autorización corresponde al administrador que solicita
- * la asignación. La implementación concreta deberá propagarlo mediante
- * la cabecera HTTP {@code Authorization}.</p>
- *
- * @author dominox45
- * @version 1.0
- * @see java.util.UUID
+ * <p>Esta abstracción evita acoplar la lógica de negocio al cliente HTTP
+ * concreto y facilita simular la dependencia en pruebas unitarias.</p>
  */
 public interface CourierClient {
 
     /**
      * Consulta si un repartidor está disponible para recibir una asignación.
      *
-     * @param repartidorId identificador UUID del repartidor en courier-service
-     * @param authorizationHeader valor de la cabecera de autorización Bearer
-     * @return {@code true} si el repartidor está disponible; {@code false}
-     *         si existe, pero no está disponible
-     * @throws RuntimeException si courier-service no puede responder
-     *         correctamente; la implementación deberá traducir los errores
-     *         HTTP y de conectividad según el contrato de Sprint 2
+     * @param repartidorId identificador UUID del repartidor
+     * @param authorizationHeader token de autorización que se reenvía
+     *                             al servicio remoto
+     * @return {@code true} si el servicio remoto confirma que está disponible;
+     *         {@code false} si existe y no está disponible
+     * @throws com.logitrack.shipment.exception.CourierIntegrationException
+     *         si la respuesta remota no se puede procesar o se produce
+     *         un error de integración
      */
     boolean estaDisponible(UUID repartidorId, String authorizationHeader);
 }

@@ -1,6 +1,6 @@
-
 package com.logitrack.shipment.controller;
 
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -11,21 +11,24 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import static org.mockito.ArgumentMatchers.eq;
 
 import com.logitrack.shipment.enums.EstadoEnvio;
 import com.logitrack.shipment.service.interfaces.EnvioService;
 
 /**
- * Pruebas web del controlador {@link EnvioController}.
+ * Pruebas web del controlador de envíos.
  *
- * <p>Se utiliza {@link WebMvcTest} para probar el comportamiento HTTP del
- * controlador sin cargar toda la aplicación ni utilizar los repositorios
- * reales. El servicio se reemplaza por un mock de Mockito.</p>
+ * @author dominox45
  */
 @WebMvcTest(controllers = EnvioController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class EnvioControllerTest {
 
     @Autowired
@@ -34,32 +37,29 @@ class EnvioControllerTest {
     @MockitoBean
     private EnvioService envioService;
 
-    /**
-     * Comprueba que GET /envios devuelve HTTP 200 y una lista vacía
-     * cuando el servicio no encuentra envíos.
-     *
-     * @throws Exception si ocurre un error durante la solicitud HTTP simulada
-     */
     @Test
+    @WithMockUser(roles = "ADMIN")
     void debeListarEnviosSinFiltro() throws Exception {
-        when(envioService.listar(null)).thenReturn(List.of());
+        when(envioService.listar(
+                isNull(EstadoEnvio.class),
+                isNull(Jwt.class)))
+                .thenReturn(List.of());
 
         mockMvc.perform(get("/envios"))
                 .andExpect(status().isOk())
                 .andExpect(content().json("[]"));
 
-        verify(envioService).listar(null);
+        verify(envioService).listar(
+                isNull(EstadoEnvio.class),
+                isNull(Jwt.class));
     }
 
-    /**
-     * Comprueba que GET /envios?estado=PENDIENTE devuelve HTTP 200
-     * y transmite al servicio el estado solicitado.
-     *
-     * @throws Exception si ocurre un error durante la solicitud HTTP simulada
-     */
     @Test
+    @WithMockUser(roles = "ADMIN")
     void debeListarEnviosFiltrandoPorEstado() throws Exception {
-        when(envioService.listar(EstadoEnvio.PENDIENTE))
+        when(envioService.listar(
+                eq(EstadoEnvio.PENDIENTE),
+                isNull(Jwt.class)))
                 .thenReturn(List.of());
 
         mockMvc.perform(get("/envios")
@@ -67,6 +67,8 @@ class EnvioControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().json("[]"));
 
-        verify(envioService).listar(EstadoEnvio.PENDIENTE);
+        verify(envioService).listar(
+                eq(EstadoEnvio.PENDIENTE),
+                isNull(Jwt.class));
     }
 }

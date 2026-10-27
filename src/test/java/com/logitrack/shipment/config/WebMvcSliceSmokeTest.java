@@ -5,6 +5,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.test.context.ActiveProfiles;
 
 import com.logitrack.shipment.service.interfaces.AsignacionService;
 import com.logitrack.shipment.service.interfaces.EnvioService;
@@ -19,6 +21,8 @@ import com.logitrack.shipment.service.interfaces.EnvioService;
  * al sumar un controlador nuevo hay que agregar aquí su servicio.</p>
  */
 @WebMvcTest
+@ActiveProfiles("test")
+@AutoConfigureMockMvc(addFilters = false)
 class WebMvcSliceSmokeTest {
 
     @Autowired

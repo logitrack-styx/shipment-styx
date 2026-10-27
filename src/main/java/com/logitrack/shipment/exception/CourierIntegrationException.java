@@ -20,7 +20,9 @@ public class CourierIntegrationException extends RuntimeException {
      * @param status estado HTTP que debe devolver shipment-service
      * @param message descripción controlada del error
      */
-    public CourierIntegrationException(HttpStatus status, String message) {
+    public CourierIntegrationException(
+            HttpStatus status,
+            String message) {
         super(message);
         this.status = status;
     }

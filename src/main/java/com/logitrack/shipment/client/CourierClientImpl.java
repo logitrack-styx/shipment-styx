@@ -3,7 +3,6 @@ package com.logitrack.shipment.client;
 import java.time.Duration;
 import java.util.UUID;
 
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -46,11 +45,11 @@ public class CourierClientImpl implements CourierClient {
      * @param readTimeoutMs tiempo máximo de espera de respuesta, en milisegundos
      */
     public CourierClientImpl(
-            @Value("${COURIER_SERVICE_URL:http://localhost:8082}")
+            @Value("${courier.service.url:${COURIER_SERVICE_URL:http://localhost:8082}}")
             String courierServiceUrl,
-            @Value("${COURIER_CONNECT_TIMEOUT_MS:2000}")
+            @Value("${courier.service.connect-timeout-ms:${COURIER_CONNECT_TIMEOUT_MS:2000}}")
             long connectTimeoutMs,
-            @Value("${COURIER_READ_TIMEOUT_MS:3000}")
+            @Value("${courier.service.read-timeout-ms:${COURIER_READ_TIMEOUT_MS:3000}}")
             long readTimeoutMs) {
 
         if (connectTimeoutMs <= 0 || readTimeoutMs <= 0) {
@@ -89,10 +88,13 @@ public class CourierClientImpl implements CourierClient {
 
         try {
             response = restClient.get()
-                    .uri(courierServiceUrl
+                    .uri(
+                            courierServiceUrl
                                     + "/couriers/{repartidorId}/disponibilidad",
                             repartidorId)
-                    .header(HttpHeaders.AUTHORIZATION, authorizationHeader)
+                    .header(
+                            HttpHeaders.AUTHORIZATION,
+                            authorizationHeader)
                     .accept(MediaType.APPLICATION_JSON)
                     .retrieve()
                     .body(CourierDisponibilidadResponse.class);
@@ -109,7 +111,8 @@ public class CourierClientImpl implements CourierClient {
                     || status == HttpStatus.FORBIDDEN.value()) {
                 throw new CourierIntegrationException(
                         HttpStatus.BAD_GATEWAY,
-                        "Falló la autenticación entre shipment-service y courier-service");
+                        "Falló la autenticación entre shipment-service "
+                                + "y courier-service");
             }
 
             if (ex.getStatusCode().is5xxServerError()) {
@@ -125,7 +128,8 @@ public class CourierClientImpl implements CourierClient {
         } catch (ResourceAccessException ex) {
             throw new CourierIntegrationException(
                     HttpStatus.SERVICE_UNAVAILABLE,
-                    "No fue posible conectar con courier-service dentro del tiempo esperado");
+                    "No fue posible conectar con courier-service "
+                            + "dentro del tiempo esperado");
 
         } catch (RestClientException ex) {
             throw new CourierIntegrationException(
@@ -138,14 +142,18 @@ public class CourierClientImpl implements CourierClient {
                 || response.disponible() == null
                 || response.estado() == null
                 || response.estado().isBlank()
-                || !repartidorId.equals(response.id())) {
+                || !java.util.Set.of("ACTIVO", "INACTIVO")
+                .contains(response.estado())
+                || !repartidorId.equals(response.id())
+                || response.disponible().booleanValue()
+                != "ACTIVO".equals(response.estado())) {
 
             throw new CourierIntegrationException(
                     HttpStatus.BAD_GATEWAY,
                     "courier-service devolvió una respuesta inválida");
         }
 
-        return response.disponible();
+        return "ACTIVO".equals(response.estado());
     }
 
     /**

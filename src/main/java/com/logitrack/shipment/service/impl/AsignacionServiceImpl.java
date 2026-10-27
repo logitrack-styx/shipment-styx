@@ -3,6 +3,8 @@ package com.logitrack.shipment.service.impl;
 
 import java.util.UUID;
 
+import org.springframework.stereotype.Service;
+
 import com.logitrack.shipment.client.CourierClient;
 import com.logitrack.shipment.dto.request.AsignacionRequest;
 import com.logitrack.shipment.dto.response.AsignacionResponse;
@@ -16,14 +18,11 @@ import com.logitrack.shipment.service.interfaces.AsignacionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 /**
  * Implementa la asignación de repartidores a envíos.
  *
- * <p>Consulta la disponibilidad en courier-service y almacena únicamente
- * el UUID del repartidor, sin establecer relaciones JPA entre servicios.</p>
+ * Consulta la disponibilidad en courier-service y almacena únicamente
+ * el UUID del repartidor, sin establecer relaciones JPA entre servicios.
  *
  * @author dominox45
  */
@@ -38,17 +37,15 @@ public class AsignacionServiceImpl implements AsignacionService {
     /**
      * Asigna un repartidor disponible a un envío pendiente.
      *
+     * La asignación definitiva se realiza mediante una actualización
+     * condicional atómica para evitar asignaciones concurrentes.
+     *
      * @param envioId identificador UUID del envío
      * @param request datos de la asignación
-     * @param authorizationHeader cabecera Authorization del administrador
+     * @param authorizationHeader cabecera Authorization reenviada a courier-service
      * @return datos de la asignación realizada
-     * @throws RecursoNoEncontradoException si el envío no existe o el
-     *         repartidor no existe en courier-service
-     * @throws TransicionEstadoInvalidaException si el envío no admite
-     *         asignación o el repartidor no está disponible
      */
     @Override
-    @Transactional
     public AsignacionResponse asignarRepartidor(
             UUID envioId,
             AsignacionRequest request,
@@ -79,8 +76,20 @@ public class AsignacionServiceImpl implements AsignacionService {
                     "El repartidor " + repartidorId + " no está disponible");
         }
 
-        envio.asignarRepartidor(repartidorId);
-        Envio envioActualizado = envioRepository.save(envio);
+        int actualizadas = envioRepository.asignarRepartidorSiDisponible(
+                envioId,
+                repartidorId,
+                EstadoEnvio.PENDIENTE);
+
+        if (actualizadas != 1) {
+            throw new TransicionEstadoInvalidaException(
+                    "El envío cambió de estado o fue asignado por otra "
+                            + "solicitud; vuelva a consultar");
+        }
+
+        Envio envioActualizado = envioRepository.findById(envioId)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "No existe un envío con id " + envioId));
 
         log.info(
                 "Repartidor {} asignado al envío {}",

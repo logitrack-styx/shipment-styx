@@ -1,4 +1,3 @@
-
 package com.logitrack.shipment.service.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -30,43 +29,30 @@ import com.logitrack.shipment.model.Envio;
 import com.logitrack.shipment.repository.EnvioRepository;
 
 /**
- * Pruebas unitarias de la asignación de repartidores mediante CourierClient.
+ * Pruebas unitarias del servicio de asignación de repartidores.
  *
  * @author dominox45
  */
 @ExtendWith(MockitoExtension.class)
 class AsignacionServiceImplTest {
 
-    /** Repositorio simulado de envíos. */
     @Mock
     private EnvioRepository envioRepository;
 
-    /** Cliente HTTP simulado de courier-service. */
     @Mock
     private CourierClient courierClient;
 
-    /** Servicio bajo prueba. */
     @InjectMocks
     private AsignacionServiceImpl asignacionService;
 
-    /** Identificador del envío utilizado en las pruebas. */
     private UUID envioId;
-
-    /** Identificador del repartidor utilizado en las pruebas. */
     private UUID repartidorId;
-
-    /** Envío de prueba en estado PENDIENTE. */
     private Envio envio;
-
-    /** Solicitud de asignación. */
     private AsignacionRequest request;
 
-    /** Cabecera de autorización simulada. */
-    private static final String AUTHORIZATION_HEADER = "Bearer test-admin-token";
+    private static final String AUTHORIZATION_HEADER =
+            "Bearer test-admin-token";
 
-    /**
-     * Prepara un envío pendiente y una solicitud de asignación.
-     */
     @BeforeEach
     void setUp() {
         envioId = UUID.randomUUID();
@@ -92,9 +78,6 @@ class AsignacionServiceImplTest {
                 .build();
     }
 
-    /**
-     * Verifica que un envío inexistente produce un error 404.
-     */
     @Test
     void debeLanzar404SiElEnvioNoExiste() {
         when(envioRepository.findById(envioId))
@@ -109,13 +92,11 @@ class AsignacionServiceImplTest {
         verify(envioRepository, never()).save(any(Envio.class));
     }
 
-    /**
-     * Verifica que un repartidor no disponible no se asigna.
-     */
     @Test
     void debeLanzar409SiElRepartidorNoEstaDisponible() {
         when(envioRepository.findById(envioId))
                 .thenReturn(Optional.of(envio));
+
         when(courierClient.estaDisponible(
                 repartidorId, AUTHORIZATION_HEADER))
                 .thenReturn(false);
@@ -125,14 +106,14 @@ class AsignacionServiceImplTest {
                 () -> asignacionService.asignarRepartidor(
                         envioId, request, AUTHORIZATION_HEADER));
 
-        verify(envioRepository, never()).save(any(Envio.class));
         verify(courierClient).estaDisponible(
                 repartidorId, AUTHORIZATION_HEADER);
+
+        verify(envioRepository, never()).save(any(Envio.class));
+        verify(envioRepository, never()).asignarRepartidorSiDisponible(
+                envioId, repartidorId, EstadoEnvio.PENDIENTE);
     }
 
-    /**
-     * Verifica que un envío que no está PENDIENTE no se puede asignar.
-     */
     @Test
     void debeLanzar409SiElEnvioNoEstaPendiente() {
         envio.asignarRepartidor(UUID.randomUUID());
@@ -147,12 +128,10 @@ class AsignacionServiceImplTest {
                         envioId, request, AUTHORIZATION_HEADER));
 
         verifyNoInteractions(courierClient);
-        verify(envioRepository, never()).save(any(Envio.class));
+        verify(envioRepository, never()).asignarRepartidorSiDisponible(
+                envioId, repartidorId, EstadoEnvio.PENDIENTE);
     }
 
-    /**
-     * Verifica que un envío que ya tiene repartidor no admite otra asignación.
-     */
     @Test
     void debeLanzar409SiElEnvioYaTieneRepartidor() {
         envio.asignarRepartidor(UUID.randomUUID());
@@ -166,31 +145,60 @@ class AsignacionServiceImplTest {
                         envioId, request, AUTHORIZATION_HEADER));
 
         verifyNoInteractions(courierClient);
-        verify(envioRepository, never()).save(any(Envio.class));
+        verify(envioRepository, never()).asignarRepartidorSiDisponible(
+                envioId, repartidorId, EstadoEnvio.PENDIENTE);
     }
 
-    /**
-     * Verifica que una asignación válida persiste el UUID sin cambiar el estado.
-     */
     @Test
-    void debeAsignarElRepartidorSinCambiarElEstadoDelEnvio() {
+    void debeAsignarRepartidorMedianteActualizacionAtomica() {
         when(envioRepository.findById(envioId))
                 .thenReturn(Optional.of(envio));
+
         when(courierClient.estaDisponible(
                 repartidorId, AUTHORIZATION_HEADER))
                 .thenReturn(true);
-        when(envioRepository.save(any(Envio.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
 
-        AsignacionResponse respuesta = asignacionService.asignarRepartidor(
-                envioId, request, AUTHORIZATION_HEADER);
+        when(envioRepository.asignarRepartidorSiDisponible(
+                envioId, repartidorId, EstadoEnvio.PENDIENTE))
+                .thenReturn(1);
+
+        AsignacionResponse respuesta =
+                asignacionService.asignarRepartidor(
+                        envioId, request, AUTHORIZATION_HEADER);
 
         assertEquals(repartidorId, respuesta.getRepartidorId());
-        assertEquals(repartidorId, envio.getRepartidorId());
-        assertEquals(EstadoEnvio.PENDIENTE, envio.getEstado());
 
         verify(courierClient).estaDisponible(
                 repartidorId, AUTHORIZATION_HEADER);
-        verify(envioRepository).save(envio);
+
+        verify(envioRepository).asignarRepartidorSiDisponible(
+                envioId, repartidorId, EstadoEnvio.PENDIENTE);
+
+        verify(envioRepository, never()).save(any(Envio.class));
+
+        // La actualización masiva no modifica la instancia cargada en memoria.
+        assertEquals(EstadoEnvio.PENDIENTE, envio.getEstado());
+    }
+
+    @Test
+    void debeLanzar409SiLaActualizacionAtomicaNoModificaFilas() {
+        when(envioRepository.findById(envioId))
+                .thenReturn(Optional.of(envio));
+
+        when(courierClient.estaDisponible(
+                repartidorId, AUTHORIZATION_HEADER))
+                .thenReturn(true);
+
+        when(envioRepository.asignarRepartidorSiDisponible(
+                envioId, repartidorId, EstadoEnvio.PENDIENTE))
+                .thenReturn(0);
+
+        assertThrows(
+                TransicionEstadoInvalidaException.class,
+                () -> asignacionService.asignarRepartidor(
+                        envioId, request, AUTHORIZATION_HEADER));
+
+        verify(envioRepository).asignarRepartidorSiDisponible(
+                envioId, repartidorId, EstadoEnvio.PENDIENTE);
     }
 }

@@ -1,3 +1,4 @@
+
 package com.logitrack.shipment.dto.request;
 
 import java.util.UUID;
@@ -7,24 +8,36 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 /**
- * Datos necesarios para registrar un envío. Referencia a un cliente ya
- * existente mediante su id; no permite crear clientes implícitamente.
+ * Datos necesarios para registrar un envío.
  *
- * @param clienteId id del cliente que solicita el envío
- * @param origen    dirección de origen
- * @param destino   dirección de destino
- * @param peso      peso del paquete
- * @param ancho     ancho del paquete
- * @param alto      alto del paquete
- * @param largo     largo del paquete
- * @author dominox45
+ * clienteId es opcional en el DTO porque:
+ * - CLIENTE: se utiliza la identidad obtenida del JWT.
+ * - ADMIN: debe indicar el cliente para quien registra el envío.
  */
 public record EnvioRequest(
-        @NotNull UUID clienteId,
+        UUID clienteId,
+
         @NotNull @Valid DireccionDto origen,
         @NotNull @Valid DireccionDto destino,
+
         @NotNull @Positive Double peso,
         @NotNull @Positive Double ancho,
         @NotNull @Positive Double alto,
-        @NotNull @Positive Double largo) {
+        @NotNull @Positive Double largo
+) {
+
+    /**
+     * Constructor compatible con el formato anterior,
+     * utilizado actualmente por los tests y otros llamadores.
+     */
+    public EnvioRequest(
+            DireccionDto origen,
+            DireccionDto destino,
+            Double peso,
+            Double ancho,
+            Double alto,
+            Double largo
+    ) {
+        this(null, origen, destino, peso, ancho, alto, largo);
+    }
 }

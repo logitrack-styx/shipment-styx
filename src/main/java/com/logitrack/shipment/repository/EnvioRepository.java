@@ -1,6 +1,7 @@
 
 package com.logitrack.shipment.repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -26,14 +27,22 @@ public interface EnvioRepository extends JpaRepository<Envio, UUID> {
      * Asigna un repartidor únicamente si el envío conserva el estado esperado
      * y todavía no tiene un repartidor asignado.
      *
-     * @return 1 si se actualizó una fila; 0 si no se cumplieron las condiciones.
+     * <p>La consulta masiva no ejecuta callbacks de auditoría JPA; por eso
+     * actualiza explícitamente la fecha y la versión de la entidad.</p>
+     *
+     * @param envioId identificador del envío
+     * @param repartidorId identificador del repartidor
+     * @param estado estado requerido por la asignación
+     * @param fechaModificacion instante de la escritura
+     * @return 1 si se actualizó una fila; 0 si no se cumplieron las condiciones
      */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
     @Query("""
         update Envio e
            set e.repartidorId = :repartidorId,
-               e.version = e.version + 1
+               e.version = e.version + 1,
+               e.lastModifiedDate = :fechaModificacion
          where e.id = :envioId
            and e.estado = :estado
            and e.repartidorId is null
@@ -41,7 +50,22 @@ public interface EnvioRepository extends JpaRepository<Envio, UUID> {
     int asignarRepartidorSiDisponible(
             @Param("envioId") UUID envioId,
             @Param("repartidorId") UUID repartidorId,
-            @Param("estado") EstadoEnvio estado);
+            @Param("estado") EstadoEnvio estado,
+            @Param("fechaModificacion") Instant fechaModificacion);
+
+    /**
+     * Ejecuta la asignación atómica utilizando el instante actual.
+     *
+     * @param envioId identificador del envío
+     * @param repartidorId identificador del repartidor
+     * @param estado estado requerido por la asignación
+     * @return cantidad de filas actualizadas
+     */
+    default int asignarRepartidorSiDisponible(
+            UUID envioId, UUID repartidorId, EstadoEnvio estado) {
+        return asignarRepartidorSiDisponible(
+                envioId, repartidorId, estado, Instant.now());
+    }
 
     /**
      * Compatibilidad con el nombre anterior del método.

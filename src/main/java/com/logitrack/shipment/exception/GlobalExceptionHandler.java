@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -218,6 +219,19 @@ public class GlobalExceptionHandler {
         return build(
                 HttpStatus.CONFLICT,
                 "La operación viola una restricción de integridad de datos");
+    }
+
+    /**
+     * Informa un conflicto cuando otra transacción modificó la misma entidad.
+     *
+     * @param ex conflicto de bloqueo optimista traducido por Spring
+     * @return respuesta HTTP 409 sin detalles internos de persistencia
+     */
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleConflictoConcurrente(
+            OptimisticLockingFailureException ex) {
+        return build(HttpStatus.CONFLICT,
+                "El envío fue modificado por otra solicitud; vuelva a consultar");
     }
 
     /**

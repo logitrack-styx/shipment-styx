@@ -32,6 +32,9 @@ class AuditingIntegrationTest {
     @Autowired
     private TestEntityManager entityManager;
 
+    @Autowired
+    private com.logitrack.shipment.repository.EnvioRepository envioRepository;
+
     /**
      * Comprueba que las fechas se establezcan al crear un envío
      * y que solo la fecha de modificación cambie al actualizarlo.
@@ -96,4 +99,30 @@ class AuditingIntegrationTest {
                         .isAfter(primeraModificacion)
         );
     }
+    /** Comprueba que la asignación masiva actualiza la auditoría sin callbacks JPA. */
+    @Test
+    void asignacionMasivaActualizaAuditoriaYVersion() {
+        Direccion direccion = new Direccion("Belgrano", "123", "Jujuy", "4600");
+        Envio envio = entityManager.persistAndFlush(new Envio(UUID.randomUUID(),
+                direccion, direccion, 1, 1, 1, 1));
+        UUID id = envio.getId();
+        entityManager.clear();
+        Envio inicial = entityManager.find(Envio.class, id);
+        Instant creacion = inicial.getCreatedDate();
+        Instant modificacion = creacion.plusSeconds(10)
+                .truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+        long version = inicial.getVersion();
+        UUID repartidor = UUID.randomUUID();
+
+        assertEquals(1, envioRepository.asignarRepartidorSiDisponible(
+                id, repartidor, EstadoEnvio.PENDIENTE, modificacion));
+
+        Envio actualizado = entityManager.find(Envio.class, id);
+        assertEquals(creacion, actualizado.getCreatedDate());
+        assertEquals(modificacion, actualizado.getLastModifiedDate());
+        assertEquals(version + 1, actualizado.getVersion());
+        assertEquals(repartidor, actualizado.getRepartidorId());
+        assertEquals(EstadoEnvio.PENDIENTE, actualizado.getEstado());
+    }
+
 }

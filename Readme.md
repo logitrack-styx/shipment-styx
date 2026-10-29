@@ -597,3 +597,13 @@ Esta documentación refleja los componentes visibles de `shipment-service` en `d
 <sub>LogiTrack · Shipment Service · Sprint 2</sub>
 
 </div>
+
+## Seguimiento de cierre Sprint 2
+
+Consultar [el arranque local y los bloqueos de integración](docs/SPRINT2-ARRANQUE-LOCAL.md)
+y [la evidencia de validación de esta rama](docs/SPRINT2-VALIDACION.md).
+La base heredada `logitrack` de la sesión fue migrada a V3 con baseline 1 controlado;
+no es la base aislada `logitrack_shipment` exigida para la entrega final.
+La asignación atómica actualiza también `lastModifiedDate` y `version`.
+Los conflictos de bloqueo optimista devuelven 409 con el formato común.
+No se declara cierre E2E mientras falten las pruebas y dependencias allí indicadas.

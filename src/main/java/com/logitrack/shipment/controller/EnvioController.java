@@ -41,7 +41,6 @@ public class EnvioController {
     @Operation(summary = "Registrar un envío")
     @ApiResponse(responseCode = "201", description = "Envío creado")
     @ApiResponse(responseCode = "400", description = "Datos inválidos")
-    @ApiResponse(responseCode = "404", description = "Cliente inexistente")
     public ResponseEntity<EnvioResponse> registrar(
             @Valid @RequestBody EnvioRequest request,
             @AuthenticationPrincipal Jwt jwt) {

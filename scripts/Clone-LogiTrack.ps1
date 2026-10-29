@@ -27,9 +27,10 @@ foreach ($project in $projects) {
     # Shipment es el repositorio desde el cual se ejecuta este script. Su remoto
     # puede haber sido renombrado o ser un fork; se conserva su rama de trabajo.
     if ($project.Path -eq $shipment) {
-        $top = & git -C $shipment rev-parse --show-toplevel
-        if ($LASTEXITCODE -ne 0 -or
-            (Resolve-Path -LiteralPath $top).Path -ne (Resolve-Path -LiteralPath $shipment).Path) {
+        # --show-prefix devuelve vacio en la raiz. No interpretar rutas de
+        # stdout nativo: Windows PowerShell 5.1 puede decodificar mal la UTF-8.
+        $prefix = & git -C $shipment rev-parse --show-prefix
+        if ($LASTEXITCODE -ne 0 -or ![string]::IsNullOrEmpty([string]$prefix)) {
             throw "El script debe estar dentro de la raíz del repositorio shipment"
         }
         Write-Host "Shipment actual: $shipment (se conserva su rama y remoto)"

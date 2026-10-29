@@ -123,3 +123,24 @@ renombrado/fork sin modificar su URL. Los otros repositorios conservan la valida
 de origen. Se ejecutó el script en Linux con los cinco clones ya existentes: éxito,
 sin actualizaciones. PowerShell Parser y test-compile: éxito. El escenario de clonación
 inicial en Windows y la suite MySQL continúan pendientes.
+
+
+## Evidencia posterior recibida de Windows y corrección de rutas Unicode
+
+El usuario actualizó a 925a439 y compartió la salida de Maven del 29/10/2026:
+`Tests run: 90, Failures: 0, Errors: 0, Skipped: 0`, BUILD SUCCESS. Esta evidencia
+reportada por el usuario incluye la suite MySQL/Testcontainers; supera el bloqueo
+local de Docker de la ejecución Linux anterior. El usuario también confirmó clean package con BUILD SUCCESS y generación de
+shipment-service-0.0.1-SNAPSHOT-exec.jar a las 00:46 del 29/10/2026.
+La imagen Docker y el E2E siguen sin resultado confirmado.
+
+Clone-LogiTrack falló al convertir la salida UTF-8 de `git rev-parse --show-toplevel`
+a una ruta en Windows PowerShell: la ñ de año fue interpretada incorrectamente.
+Se reemplazó la comparación de rutas por `--show-prefix`, que devuelve vacío en
+la raíz. El script ya no depende de decodificar una ruta nativa ni de cambiar
+la codificación global de la consola. Se conserva la rama y el remoto existentes.
+
+Verificación del ajuste del script en PowerShell 7/Linux: se creó un repositorio
+temporal en una ruta con ñ y espacios, que fue aceptada; se comprobó además que
+una copia del script fuera de la raíz del repositorio es rechazada. Ambas pruebas
+pasaron. La ejecución específica en Windows PowerShell 5.1 requiere reintento del usuario.

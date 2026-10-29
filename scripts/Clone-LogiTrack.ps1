@@ -24,6 +24,18 @@ $projects = @(
     @{ Name = 'styx-config'; Branch = 'main'; Path = (Join-Path $Root 'styx-config') }
 )
 foreach ($project in $projects) {
+    # Shipment es el repositorio desde el cual se ejecuta este script. Su remoto
+    # puede haber sido renombrado o ser un fork; se conserva su rama de trabajo.
+    if ($project.Path -eq $shipment) {
+        $top = & git -C $shipment rev-parse --show-toplevel
+        if ($LASTEXITCODE -ne 0 -or
+            (Resolve-Path -LiteralPath $top).Path -ne (Resolve-Path -LiteralPath $shipment).Path) {
+            throw "El script debe estar dentro de la raíz del repositorio shipment"
+        }
+        Write-Host "Shipment actual: $shipment (se conserva su rama y remoto)"
+        & git -C $shipment log -1 --format='%h %s'
+        continue
+    }
     if (!(Test-Path -LiteralPath $project.Path)) {
         & git clone --branch $project.Branch "https://github.com/logitrack-styx/$($project.Name).git" $project.Path
         if ($LASTEXITCODE -ne 0) { throw "No se pudo clonar $($project.Name)" }

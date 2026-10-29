@@ -107,3 +107,19 @@ Con Docker Desktop iniciado y Java 25, desde shipment en esta rama:
 El último comando corresponde únicamente a la base heredada ya migrada. La guía
 `SPRINT2-ARRANQUE-LOCAL.md` explica la base aislada para la entrega final. No activar
 baseline nuevamente. No cerrar el Sprint 2 grupal basándose solo en estas pruebas.
+
+## Ajuste tras la actualización local de Windows
+
+El usuario informó cambios locales en EnvioRepository y EnvioRepositoryTest y una
+rama todavía detrás de origin. El fallo local `asignacion_debeActualizarAuditoriaYVersion`
+no corresponde al nombre de la prueba nueva del PR: difiere en un microsegundo.
+La prueba nueva relee la fecha creada desde MySQL antes de comparar y ahora utiliza
+un instante de modificación en segundos exactos, sin dependencia del redondeo
+nanosegundos/microsegundos. No se relajaron las aserciones ni se omitió auditoría.
+
+Clone-LogiTrack reconoce shipment por la raíz desde la que se ejecuta, conserva su
+rama y remoto y no lo cambia a develop con UpdateExisting. Esto admite un remoto
+renombrado/fork sin modificar su URL. Los otros repositorios conservan la validación
+de origen. Se ejecutó el script en Linux con los cinco clones ya existentes: éxito,
+sin actualizaciones. PowerShell Parser y test-compile: éxito. El escenario de clonación
+inicial en Windows y la suite MySQL continúan pendientes.

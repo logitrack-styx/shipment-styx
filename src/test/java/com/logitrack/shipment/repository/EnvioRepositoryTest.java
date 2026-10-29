@@ -187,7 +187,10 @@ class EnvioRepositoryTest {
         Envio persistido = envioRepository.findById(envio.getId()).orElseThrow();
         Instant creacion = persistido.getCreatedDate();
         long version = persistido.getVersion();
-        Instant modificacion = creacion.plusSeconds(10);
+        // DATETIME(6) conserva microsegundos; un segundo exacto evita que
+        // el driver o MySQL redondeen el instante esperado al persistirlo.
+        Instant modificacion = creacion.plusSeconds(10)
+                .truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
 
         assertEquals(1, envioRepository.asignarRepartidorSiDisponible(
                 envio.getId(), repartidorId, EstadoEnvio.PENDIENTE, modificacion));

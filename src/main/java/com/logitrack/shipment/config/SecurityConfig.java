@@ -153,8 +153,8 @@ public class SecurityConfig {
 
             boolean validSubject;
             try {
-                UUID.fromString(jwt.getSubject());
-                validSubject = true;
+                String subject = jwt.getSubject();
+                validSubject = UUID.fromString(subject).toString().equals(subject);
             } catch (RuntimeException ex) {
                 validSubject = false;
             }

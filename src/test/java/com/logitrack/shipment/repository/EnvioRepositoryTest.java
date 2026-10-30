@@ -5,7 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+import java.time.Instant;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import com.logitrack.shipment.config.JpaAuditingConfig;
 import com.logitrack.shipment.enums.EstadoEnvio;
@@ -13,6 +17,9 @@ import com.logitrack.shipment.model.Direccion;
 import com.logitrack.shipment.model.Envio;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -50,6 +57,9 @@ class EnvioRepositoryTest {
 
     @Autowired
     private EnvioRepository envioRepository;
+
+    @Autowired
+    private jakarta.persistence.EntityManager entityManager;
 
     private Envio envio;
     private UUID repartidorId;
@@ -170,4 +180,78 @@ class EnvioRepositoryTest {
         assertNotNull(envio.getId());
         assertNotNull(envio.getCodigoSeguimiento());
     }
+    /** Comprueba la auditoría explícita de una escritura que omite callbacks JPA. */
+    @Test
+    void asignacionActualizaFechaYVersionSinCambiarCreacion() {
+        entityManager.clear();
+        Envio persistido = envioRepository.findById(envio.getId()).orElseThrow();
+        Instant creacion = persistido.getCreatedDate();
+        long version = persistido.getVersion();
+        // DATETIME(6) conserva microsegundos; un segundo exacto evita que
+        // el driver o MySQL redondeen el instante esperado al persistirlo.
+        Instant modificacion = creacion.plusSeconds(10)
+                .truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
+
+        assertEquals(1, envioRepository.asignarRepartidorSiDisponible(
+                envio.getId(), repartidorId, EstadoEnvio.PENDIENTE, modificacion));
+
+        Envio actualizado = envioRepository.findById(envio.getId()).orElseThrow();
+        assertEquals(creacion, actualizado.getCreatedDate());
+        assertEquals(modificacion, actualizado.getLastModifiedDate());
+        assertEquals(version + 1, actualizado.getVersion());
+    }
+
+    /**
+     * Ejecuta dos escrituras simultáneas sobre MySQL con transacciones separadas.
+     *
+     * <p>Se desactiva la transacción del test para que el alta inicial sea visible
+     * desde ambos hilos. Cada llamada al repositorio confirma su propia escritura.</p>
+     *
+     * @throws Exception si un hilo falla o supera el tiempo de espera
+     */
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void soloUnaAsignacionConcurrentePersiste() throws Exception {
+        UUID id = envio.getId();
+        UUID primero = UUID.randomUUID();
+        UUID segundo = UUID.randomUUID();
+        long versionInicial = envio.getVersion();
+        CountDownLatch preparados = new CountDownLatch(2);
+        CountDownLatch inicio = new CountDownLatch(1);
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            var a = executor.submit(() -> {
+                preparados.countDown();
+                if (!inicio.await(10, TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("No se habilitó la asignación A");
+                }
+                return envioRepository.asignarRepartidorSiDisponible(
+                        id, primero, EstadoEnvio.PENDIENTE);
+            });
+            var b = executor.submit(() -> {
+                preparados.countDown();
+                if (!inicio.await(10, TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("No se habilitó la asignación B");
+                }
+                return envioRepository.asignarRepartidorSiDisponible(
+                        id, segundo, EstadoEnvio.PENDIENTE);
+            });
+            assertTrue(preparados.await(10, TimeUnit.SECONDS));
+            inicio.countDown();
+            int resultadoA = a.get(20, TimeUnit.SECONDS);
+            int resultadoB = b.get(20, TimeUnit.SECONDS);
+            assertEquals(1, resultadoA + resultadoB);
+
+            Envio actualizado = envioRepository.findById(id).orElseThrow();
+            assertEquals(resultadoA == 1 ? primero : segundo, actualizado.getRepartidorId());
+            assertEquals(EstadoEnvio.PENDIENTE, actualizado.getEstado());
+            assertEquals(versionInicial + 1, actualizado.getVersion());
+        } finally {
+            inicio.countDown();
+            executor.shutdownNow();
+            assertTrue(executor.awaitTermination(30, TimeUnit.SECONDS));
+            envioRepository.deleteById(id);
+        }
+    }
+
 }

@@ -1,0 +1,54 @@
+name: Shipment Service CI
+
+on:
+  push:
+    branches:
+      - develop
+      - fix/shipment-integration-readiness
+  pull_request:
+    branches:
+      - develop
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Java 25 - Maven and MySQL Testcontainers
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Run full suite and package
+        run: |
+          chmod +x mvnw
+          ./mvnw --batch-mode --no-transfer-progress clean verify
+
+      - name: Upload JUnit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shipment-surefire-reports
+          path: target/surefire-reports/
+          if-no-files-found: warn
+
+  docker-image:
+    name: Multi-stage Docker build
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build the runtime image
+        run: docker build --tag logitrack-shipment:ci .

@@ -34,8 +34,10 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD in .env}
       JWT_PUBLIC_KEY_LOCATION: file:/run/secrets/jwt-public.pem
       JWT_ISSUER: logitrack-security
-      CONFIG_SERVER_URL: http://config-server:8888
-      COURIER_SERVICE_URL: http://courier-service:8082
+      CONFIG_SERVER_URL: ${CONFIG_SERVER_URL:-http://host.docker.internal:8888}
+      COURIER_SERVICE_URL: ${COURIER_SERVICE_URL:-http://host.docker.internal:8082}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8083:8083"
     volumes:

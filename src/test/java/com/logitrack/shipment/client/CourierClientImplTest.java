@@ -29,6 +29,12 @@ class CourierClientImplTest {
     private int status;
     private String responseBody;
     private UUID repartidorId;
+    private final java.util.concurrent.atomic.AtomicReference<String> authorization =
+            new java.util.concurrent.atomic.AtomicReference<>();
+    private final java.util.concurrent.atomic.AtomicReference<String> accept =
+            new java.util.concurrent.atomic.AtomicReference<>();
+    private final java.util.concurrent.atomic.AtomicReference<String> path =
+            new java.util.concurrent.atomic.AtomicReference<>();
 
     /**
      * Inicializa un servidor HTTP local en un puerto disponible y configura
@@ -46,6 +52,9 @@ class CourierClientImplTest {
         responseBody = "";
 
         server.createContext("/couriers/", exchange -> {
+            authorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+            accept.set(exchange.getRequestHeaders().getFirst("Accept"));
+            path.set(exchange.getRequestURI().getPath());
             byte[] body = responseBody.getBytes(StandardCharsets.UTF_8);
 
             exchange.getResponseHeaders()
@@ -94,6 +103,9 @@ class CourierClientImplTest {
                 repartidorId, "Bearer token-prueba");
 
         assertTrue(disponible);
+        assertEquals("Bearer token-prueba", authorization.get());
+        assertEquals("application/json", accept.get());
+        assertEquals("/couriers/" + repartidorId + "/disponibilidad", path.get());
     }
 
     /**
@@ -290,4 +302,25 @@ class CourierClientImplTest {
 
         assertEquals(HttpStatus.SERVICE_UNAVAILABLE, excepcion.getStatus());
     }
+    /** Comprueba que el timeout de lectura se traduce a 503 sin reintentos. */
+    @Test
+    void debeTraducirTimeoutDeLecturaAServiceUnavailable() {
+        server.removeContext("/couriers/");
+        server.createContext("/couriers/", exchange -> {
+            try {
+                Thread.sleep(300);
+                exchange.sendResponseHeaders(200, -1);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+            } finally {
+                exchange.close();
+            }
+        });
+        CourierClientImpl lento = new CourierClientImpl(
+                "http://localhost:" + server.getAddress().getPort(), 2000, 50);
+        CourierIntegrationException ex = assertThrows(CourierIntegrationException.class,
+                () -> lento.estaDisponible(repartidorId, "Bearer token-prueba"));
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, ex.getStatus());
+    }
+
 }

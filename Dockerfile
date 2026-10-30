@@ -19,7 +19,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --system --no-create-home --shell /usr/sbin/nologin appuser
 
-COPY --from=build /workspace/target/shipment-service-*.jar /app/app.jar
+COPY --from=build /workspace/target/shipment-service-*-exec.jar /app/app.jar
 
 USER appuser
 

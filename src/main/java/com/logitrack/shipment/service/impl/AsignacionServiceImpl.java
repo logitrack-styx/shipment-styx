@@ -4,6 +4,7 @@ package com.logitrack.shipment.service.impl;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import com.logitrack.shipment.client.CourierClient;
 import com.logitrack.shipment.dto.request.AsignacionRequest;
@@ -46,6 +47,7 @@ public class AsignacionServiceImpl implements AsignacionService {
      * @return datos de la asignación realizada
      */
     @Override
+    @PreAuthorize("hasRole('ADMIN')")
     public AsignacionResponse asignarRepartidor(
             UUID envioId,
             AsignacionRequest request,
